@@ -1,0 +1,33 @@
+{
+	"infoDir":"./Runfiles/HH_Test/",
+	"modelDir":"./Models/HH_Test/",
+	"logDir":"./Logs/HH_Test/",
+	"cpDir":"./Checkpoints/HH_Test/",
+
+	"NGen":2,
+	"checkpoint_freq":1,
+
+	"mutation":{
+		"method":"normal",
+		"NMut":3,
+		"NCross":3,
+	},
+
+	"ind":{
+		"verbose":1
+	},
+
+	"pop":{
+		"NInd":10,
+		"Mut_Prob":1.0,
+		"Cross_Prob":0.3,
+		"maxInd":30,
+		"verbose":2
+	},
+
+	"archive_logs":true,
+	"remove_old_logs":false,
+
+	"archive_cps":true,
+	"remove_old_cps":false,
+}

@@ -44,7 +44,7 @@ def is_floatable(value, name=None, verbose=0):
 
 	try:
 		_ = float(value)
-		if verbose:
+		if verbose > 1:
 			if name is not None:
 				print(f"{name} = {value} is floatable!")
 			else:
@@ -52,7 +52,7 @@ def is_floatable(value, name=None, verbose=0):
 		return True
 
 	except ValueError:
-		if verbose:
+		if verbose > 1:
 			if name is not None:
 				print(f"{name} = {value} is not floatable!")
 			else:

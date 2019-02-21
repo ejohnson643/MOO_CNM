@@ -8,9 +8,9 @@
 	"checkpoint_freq":1,
 
 	"mutation":{
-		"method":"normal",
-		"NMut":3,
-		"NCross":3,
+	"method":"normal",
+	"NMut":3,
+	"NCross":3
 	},
 
 	"ind":{
@@ -29,5 +29,5 @@
 	"remove_old_logs":false,
 
 	"archive_cps":true,
-	"remove_old_cps":false,	
+	"remove_old_cps":false
 }

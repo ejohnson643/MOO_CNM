@@ -44,12 +44,14 @@ import os
 import pickle as pkl
 import scipy.stats as st
 
+import Utility.runfile_util as rfu
 import Utility.utility as utl
 
 
 class Individual(dict):
 
 	def __init__(self,
+		info,
 		popID=None,
 		parents=None,
 		verbose=0):
@@ -59,6 +61,10 @@ class Individual(dict):
 		#=======================================================================
 		verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
 		self.verbosity = deepcopy(verbose)
+
+		err_str = "Argument 'info' must be a dictionary.  (Use Utility.runfile_"
+		err_str += "util(infoPath) to load.)"
+		assert isinstance(info, dict), err_str
 
 		if popID is not None:
 			if not utl.is_floatable(popID, name='Ind.popID',
@@ -79,7 +85,7 @@ class Individual(dict):
 		self.popID = deepcopy(popID)
 
 		if parents is not None:
-			err_str = "keyword argument 'parents' is not list."
+			err_str = "Keyword argument 'parents' is not list."
 			assert isinstance(parents, list), err_str
 		else:
 			parents = []
@@ -91,7 +97,7 @@ class Individual(dict):
 
 if __name__ == "__main__":
 
-	ind = Individual()
+	ind = Individual({})
 
 
 

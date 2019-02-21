@@ -20,3 +20,20 @@
 ================================================================================
 ================================================================================
 """
+from copy import deepcopy
+import json
+import numpy as np
+import os
+import pickle as pkl
+
+import Utility.utility as utl
+
+
+def getInfo(infoPath, verbose=0):
+
+	verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
+
+	with open(os.path.join(infoPath, "info.json"), "r") as f:
+		info = json.load(f)
+
+	return info

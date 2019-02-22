@@ -104,14 +104,14 @@ class Individual(dict):
 		#	Use modelDir to initialize param Name:Value
 		#=======================================================================
 
-		modelDict = self._load_model()
+		modelDict = self.load_model()
 
 		self._init_params()
 
 		return
 
 
-	def _load_model(self):
+	def load_model(self):
 
 		if self.verbosity:
 			print("Loading model!")
@@ -121,8 +121,7 @@ class Individual(dict):
 		if self.verbosity > 1:
 			print(f"Trying to load {modelPath}...")
 
-		with open(modelPath, "rb") as f:
-			modelDict = pkl.load(f)
+		modelDict = self._load_model_dict(modelPath)
 
 		if self.verbosity > 1:
 			print(f"Loaded model {modelDict['name']}!")
@@ -130,6 +129,11 @@ class Individual(dict):
 		self.model = modelDict['model']
 
 		return modelDict
+
+	def _load_model_dict(modelPath):
+		print("This is a place holder.  Each model must have its own model" + 
+			"-loading method.")
+		return
 
 
 	def _init_params(self):

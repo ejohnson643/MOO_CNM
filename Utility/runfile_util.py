@@ -91,8 +91,7 @@ def checkInfoDirs(info, verbose=0):
 	if verbose > 1:
 		print(f"Checking that 'modelDir' has correct files!")
 
-	reqFiles = ['model_Ind.py', 'model.py', 'info.json',
-		'model_dict.py', 'param_dicts.py']
+	reqFiles = ['model_Ind.py', 'model.py', 'info.json', 'param_dicts.py']
 
 	modelFiles = os.listdir(info['modelDir'])
 

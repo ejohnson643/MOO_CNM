@@ -71,13 +71,11 @@ if __name__ == "__main__":
 
 	if rank == 0:
 
-		
+		# with open(os.path.join(info['modelDir'], "model_dict.py"), "r") as f:
+		# 	exec(f.read())
 
-		with open(os.path.join(info['modelDir'], "model_dict.py"), "r") as f:
-			exec(f.read())
-
-		with open(os.path.join(info['modelDir'], "param_dicts.py"), "r") as f:
-			exec(f.read())
+		# with open(os.path.join(info['modelDir'], "param_dicts.py"), "r") as f:
+		# 	exec(f.read())
 
 
 		ind1 = Individual(info, verbose=2)

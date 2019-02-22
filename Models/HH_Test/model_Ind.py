@@ -19,8 +19,43 @@
 ================================================================================
 ================================================================================
 """
+import importlib.util as imputl
+import json
+import numpy as np
+import os
+import pickle as pkl
 
 from Base.Individual import Individual as BaseInd
+import Utility.runfile_util as rfu
+
+################################################################################
+#	Set Model Parameters
+################################################################################
+modelDict = {
+	'name':'HH_Test',
+	'equil_inits':[
+		0.,
+		0.,
+		0.,
+		0.
+	],
+	'inits':[
+		0.,
+		0.,
+		0.,
+		0.
+	],
+	'colDict':{
+		'V':0,
+		'n':1,
+		'm':2,
+		'h':3
+	}
+}
+
+################################################################################
+#	Set Model Subclass
+################################################################################
 
 class Individual(BaseInd):
 
@@ -35,3 +70,20 @@ class Individual(BaseInd):
 			verbose=verbose)
 
 		return
+
+	def _load_model_dict(self, modelPath):
+
+		jsonPath = os.path.join(self.info['modelDir'], "model.json")
+		with open(jsonPath, "r") as f:
+			modelDict = json.load(f)
+
+		indSpec = imputl.spec_from_file_location("model",
+			os.path.join(self.info['modelDir'], "model.py"))
+		foo = imputl.module_from_spec(indSpec)
+		indSpec.loader.exec_module(foo)
+		model = foo.model
+
+		modelDict['model'] = model
+
+		return modelDict
+

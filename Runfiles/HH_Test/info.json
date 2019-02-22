@@ -8,9 +8,9 @@
 	"checkpoint_freq":1,
 
 	"mutation":{
-	"method":"normal",
-	"NMut":3,
-	"NCross":3
+		"method":"normal",
+		"NMut":3,
+		"NCross":3
 	},
 
 	"ind":{

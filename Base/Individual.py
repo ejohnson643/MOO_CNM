@@ -32,7 +32,13 @@
 
 	While I hope to keep this class fairly general in application, since this
 	code is intended to be used to fit a neuron model, I may sacrifice
-	generality for brevity at some points.
+	generality for brevity at some points.  To this end, I will create an
+	Individual subclass for each model that inherits this class.  That 
+	model.Individual subclass will contain most of the specific actions for that
+	model.  In this file, I will institute generic routines or example routines.
+	
+	This class will *ASSUME* that infoPath has been checked and that a model has
+	been loaded.
 
 ================================================================================
 ================================================================================
@@ -66,6 +72,8 @@ class Individual(dict):
 		err_str += "util(infoPath) to load.)"
 		assert isinstance(info, dict), err_str
 
+		self.info = deepcopy(info)
+
 		if popID is not None:
 			if not utl.is_floatable(popID, name='Ind.popID',
 				verbose=self.verbosity):
@@ -92,12 +100,60 @@ class Individual(dict):
 
 		self.parents = deepcopy(parents)
 
+		#=======================================================================
+		#	Use modelDir to initialize param Name:Value
+		#=======================================================================
+
+		modelDict = self._load_model()
+
+		self._init_params()
+
 		return
+
+
+	def _load_model(self):
+
+		if self.verbosity:
+			print("Loading model!")
+
+		modelPath = os.path.join(self.info['modelDir'], "modelDict.pkl")
+
+		if self.verbosity > 1:
+			print(f"Trying to load {modelPath}...")
+
+		with open(modelPath, "rb") as f:
+			modelDict = pkl.load(f)
+
+		if self.verbosity > 1:
+			print(f"Loaded model {modelDict['name']}!")
+
+		self.model = modelDict['model']
+
+		return modelDict
+
+
+	def _init_params(self):
+
+		return
+		# if self.verbosity:
+		# 	print("Initializing parameters!")
+
+		# paramPath = os.path.join(self.info['modelDir'], "paramDict.pkl")
+		# if self.verbosity > 1:
+		# 	print(f"Trying to load {paramPath}...")
+
+		# try:
+		# 	with open(paramPath, "wb") as f:
+		# 		paramDict = 
 
 
 if __name__ == "__main__":
 
-	ind = Individual({})
+	infoPath = "./Runfiles/HH_Test/"
+
+	info = rfu.getInfo(infoPath, verbose=1)
+
+	ind = Individual(info)
 
 
 

@@ -45,6 +45,8 @@
 """
 
 from copy import deepcopy
+import importlib.util as imputl
+import json
 import numpy as np
 import os
 import pickle as pkl
@@ -106,7 +108,7 @@ class Individual(dict):
 
 		modelDict = self.load_model()
 
-		self._init_params()
+		self.init_params(modelDict)
 
 		return
 
@@ -128,15 +130,28 @@ class Individual(dict):
 
 		self.model = modelDict['model']
 
+		return modelDict.copy()
+
+	def _load_model_dict(self, modelPath):
+
+		jsonPath = os.path.join(self.info['modelDir'], "model.json")
+		with open(jsonPath, "r") as f:
+			modelDict = json.load(f)
+
+		indSpec = imputl.spec_from_file_location("model",
+			os.path.join(self.info['modelDir'], "model.py"))
+		foo = imputl.module_from_spec(indSpec)
+		indSpec.loader.exec_module(foo)
+		model = foo.model
+
+		modelDict['model'] = model
+
 		return modelDict
 
-	def _load_model_dict(modelPath):
-		print("This is a place holder.  Each model must have its own model" + 
-			"-loading method.")
-		return
+
+	def init_params(self, modelDict):
 
 
-	def _init_params(self):
 
 		return
 		# if self.verbosity:

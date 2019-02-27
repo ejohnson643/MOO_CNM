@@ -38,7 +38,7 @@ import sys
 from time import sleep
 
 # from Base.Individual import Individual
-# from Base.population import Population
+from Base.Population import Population
 # from Base.halloffame import HallofFame
 # from EAMPI.distributeEvaluation import distributeEvaluation
 # from EAMPI.setupProcesses import setupProcesses
@@ -54,15 +54,15 @@ host = str(socket.gethostname())
 # Get infoDir
 infoDir = str(sys.argv[-1]) # The infoDir should be provided as a command-line
 							# input.
-info = rfu.getInfo(infoDir, verbose=1)
-info['time'] = deepcopy(time)
-info['host'] = deepcopy(host)
+infoDict = rfu.getInfo(infoDir, verbose=1)
+infoDict['time'] = deepcopy(time)
+infoDict['host'] = deepcopy(host)
 
-indSpec = imputl.spec_from_file_location("Individual",
-	os.path.join(info['modelDir'], "model_Ind.py"))
-foo = imputl.module_from_spec(indSpec)
-indSpec.loader.exec_module(foo)
-Individual = foo.Individual
+# indSpec = imputl.spec_from_file_location("Individual",
+# 	os.path.join(infoDict['modelDir'], "model_Ind.py"))
+# foo = imputl.module_from_spec(indSpec)
+# indSpec.loader.exec_module(foo)
+# Individual = foo.Individual
 
 if __name__ == "__main__":
 
@@ -70,15 +70,8 @@ if __name__ == "__main__":
 	rank = comm.Get_rank()
 
 	if rank == 0:
-
-		# with open(os.path.join(info['modelDir'], "model_dict.py"), "r") as f:
-		# 	exec(f.read())
-
-		# with open(os.path.join(info['modelDir'], "param_dicts.py"), "r") as f:
-		# 	exec(f.read())
-
-
-		ind1 = Individual(info, verbose=2)
+		
+		pass
 
 
 

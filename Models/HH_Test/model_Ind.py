@@ -34,12 +34,12 @@ import Utility.runfile_util as rfu
 
 class Individual(BaseInd):
 
-	def __init__(self, info,
+	def __init__(self, infoDict,
 		popID=None,
 		parents=None,
 		verbose=0):
 
-		BaseInd.__init__(self, info,
+		BaseInd.__init__(self, infoDict,
 			popID=popID,
 			parents=parents,
 			verbose=verbose)

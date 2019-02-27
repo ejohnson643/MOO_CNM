@@ -1,11 +1,18 @@
 {
-	"infoDir":"./Runfiles/HH_Test/",
 	"modelDir":"./Models/HH_Test/",
 	"logDir":"./Logs/HH_Test/",
 	"cpDir":"./Checkpoints/HH_Test/",
 
-	"NGen":2,
-	"checkpoint_freq":1,
+	"EA":{
+		"NGen":2,
+		"cpFreq":1,
+
+		"archive_logs":true,
+		"remove_old_logs":false,
+
+		"archive_cps":true,
+		"remove_old_cps":false
+	},
 
 	"mutation":{
 		"method":"normal",
@@ -14,7 +21,8 @@
 	},
 
 	"ind":{
-		"verbose":1
+		"verbose":2,
+		"randomInit":true
 	},
 
 	"pop":{
@@ -25,9 +33,9 @@
 		"verbose":2
 	},
 
-	"archive_logs":true,
-	"remove_old_logs":false,
+	"modelParams":{},
 
-	"archive_cps":true,
-	"remove_old_cps":false
+	"simulation":{},
+
+	"objectives":{}
 }

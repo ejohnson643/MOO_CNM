@@ -28,108 +28,160 @@ import pickle as pkl
 
 import Utility.utility as utl
 
-
+################################################################################
+#	Get Info Dict from File Path
+################################################################################
 def getInfo(infoPath, verbose=0):
 
+	## Check verbose keyword
 	verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
 
+	## Check that infoPath is a valid path
 	err_str = f"Invalid argument 'infoPath': {infoPath} is not a directory."
 	assert os.path.isdir(infoPath), err_str
 
+	## Load info.json
 	if verbose:
 		print_str = f"Loading info from {infoPath}"
 		print(print_str)
 	with open(os.path.join(infoPath, "info.json"), "r") as f:
-		info = json.load(f)
+		infoDict = json.load(f)
 
-	try:
-		tmp = deepcopy(info['infoDir'])
-		assert tmp == infoPath
-	except:
-		warn_str = f"\n\nWARNING: info['infoDir'] != infoPath, using infoPath\n"
-		if verbose:
-			print(warn_str)
-		info['infoDir'] = deepcopy(infoPath)
+	## Check the entries of infoDict
+	infoDict = checkInfo(infoDict, verbose=verbose)
 
-	info = checkInfo(info, verbose=verbose)
+	## Set infoDir field
+	infoDict['infoDir'] = deepcopy(infoPath)
 
-	return info
+	return infoDict
 
 
-def checkInfo(info, verbose=0):
+################################################################################
+#	Check Info Dict Fields
+################################################################################
+def checkInfo(infoDict, verbose=0):
 
+	## Check verbose keyword
 	verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
 
 	if verbose > 1:
-		print_str = "Checking entries of 'info'!"
+		print_str = "\n...Checking entries of 'infoDict'!"
 		print(print_str)
 
+	## Make sure that infoDict is a *dictionary*
 	err_str = "Argument 'info' must be a dictionary.  (Use runfile_"
-	err_str += "util(infoPath) to load.)"
-	assert isinstance(info, dict), err_str
+	err_str += "util.getInfo(infoPath) to load.)"
+	assert isinstance(infoDict, dict), err_str
 
-	info = checkInfoDirs(info, verbose=verbose)
+	## Check directory fields of infoDict
+	infoDict = _checkInfoDirs(infoDict, verbose=verbose)
 
-	info = checkRuntimeParams(info, verbose=verbose)
+	## Check runtime parameter fields of info Dict
+	infoDict = _checkRuntimeParams(infoDict, verbose=verbose)
 
-	return info
+	## Check individual parameter fields of info dict
+	infoDict = _checkIndParams(infoDict, verbose=verbose)
+
+	## Check Ind, Pop, Mut/Xover, Archive, SimProt, Objs, Model
+
+	## Fill in all missing fields with defaults from modelDir/info.json
+	infoDict = getDefaults(infoDict, verbose=verbose)
+
+	return infoDict
 
 
-def checkInfoDirs(info, verbose=0):
+################################################################################
+#	Check Directory Fields
+################################################################################
+def _checkInfoDirs(infoDict, verbose=0):
 
 	if verbose > 1:
-		print_str = "Checking basic 'info' directories..."
+		print_str = "\nChecking basic 'infoDict' directories..."
 		print(print_str)
 
-	basicDirs = ['infoDir', 'modelDir', 'logDir', 'cpDir']
+	## Iterate through the required directories
+	basicDirs = ['modelDir', 'logDir', 'cpDir']
 	for bDir in basicDirs:
 		if verbose > 1:
-			print(f"Checking info['{bDir}'] =\t{info[bDir]}...")
-		err_str =f"info['{bDir}'] = {info[bDir]} is not a directory!"
-		assert os.path.isdir(info[bDir]), err_str
+			print(f"Checking info['{bDir}'] =\t{infoDict[bDir]}...")
+		err_str =f"info['{bDir}'] = {infoDict[bDir]} is not a directory!"
+		assert os.path.isdir(infoDict[bDir]), err_str
 
+	## Check modelDir to make sure it has the required files
 	if verbose > 1:
-		print(f"Checking that 'modelDir' has correct files!")
+		print(f"\nChecking that 'modelDir' has correct files!")
+	reqFiles = ['model_Ind.py', ## Ind subclass with model-specific methods
+				'model.py',		## Actual ODE functions to implement model
+				'info.json', 	## Default info dict for model
+				'model.json'] 	## Model parameters
 
-	reqFiles = ['model_Ind.py', 'model.py', 'info.json', 'param_dicts.py']
-
-	modelFiles = os.listdir(info['modelDir'])
+	modelFiles = os.listdir(infoDict['modelDir'])
 
 	for reqFile in reqFiles:
 		if verbose > 1:
 			print(f"Checking that {reqFile} is in modelDir...")
-		err_str = f"{reqFile} is not in modelDir = {info['modelDir']}!"
+		err_str = f"{reqFile} is not in modelDir = {infoDict['modelDir']}!"
 		assert reqFile in modelFiles, err_str
 
-	return deepcopy(info)
+	return deepcopy(infoDict)
 
 
-def checkRuntimeParams(info, verbose=0):
+################################################################################
+#	Check Runtime Parameter Fields
+################################################################################
+def _checkRuntimeParams(infoDict, verbose=0):
 
 	if verbose > 1:
-		print_str = "Checking Runtime Parameters in 'info'!"
+		print_str = "\nChecking Runtime Parameters in 'infoDict'!"
+		print(print_str)
 
-	reqParams = ['NGen', 'checkpoint_freq']
-	defParams = [1, 1]
+	rtInts = ['NGen', 	## Number of generations to run EA
+			  'cpFreq']	## Frequency (in generations) to save checkpoints
 
-	for reqP, defP in zip(reqParams, defParams):
+	for rtP in rtInts:
 		if verbose > 1:
-			print(f"Checking info[{reqP}]...")
+			print(f"Checking infoDict[{rtP}]...")
 
 		try:
-			utl.force_pos_int(info[reqP], name=f"info[{reqP}]", verbose=verbose)
+			utl.force_pos_int(infoDict['EA'][rtP],
+				name=f"infoDict['EA']['{rtP}']",
+				verbose=verbose, zero_ok=True)
 		except:
-			warn_str = f"WARNING: invalid entry for info[{reqP}], setting to "
-			warn_str += f"default: {defP}"
-			if verbose:
-				print(warn_str)
-			info[reqP] = defP
+			err_str = f"Invalid entry for 'infoDict['EA']['{rtP}']'!"
+			raise ValueError(err_str)
 
-	return deepcopy(info)
+	rtBools = ["archive_logs",
+			   "remove_old_logs",
+			   "archive_cps",
+			   "remove_old_cps"]
+
+	for rtP in rtBools:
+		if verbose > 1:
+			print(f"Checking infoDict['EA']['{rtP}']...")
+
+		err_str = f"Invalid entry for 'infoDict['EA']['{rtP}']'; must be bool"
+		assert isinstance(infoDict['EA'][rtP], bool), err_str
+
+	return deepcopy(infoDict)
+
+
+################################################################################
+#	Check Individual Parameter Fields
+################################################################################
+def _checkIndParams(infoDict, verbose=0):
+
+	if verbose > 1:
+		print_str = "\nChecking Individual Parameters in 'infoDict'!"
+		print(print_str)
+
+	return deepcopy(infoDict)
 
 
 
 
+def getDefaults(infoDict, verbose=0):
+
+	return infoDict
 
 
 

@@ -59,34 +59,29 @@ import Utility.utility as utl
 class Individual(dict):
 
 	def __init__(self,
-		info,
+		infoDict,
 		popID=None,
-		parents=None,
-		verbose=0):
+		parents=None):
 
-		#=======================================================================
-		#	Check inputs
-		#=======================================================================
-		verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
-		self.verbosity = deepcopy(verbose)
+	############################################################################
+	#	Check inputs
+	############################################################################
+		# verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
+		# self.verbose = deepcopy(verbose)
 
-		err_str = "Argument 'info' must be a dictionary.  (Use Utility.runfile_"
-		err_str += "util(infoPath) to load.)"
-		assert isinstance(info, dict), err_str
-
-		self.info = deepcopy(info)
+		self._checkInfo(infoDict)
 
 		if popID is not None:
 			if not utl.is_floatable(popID, name='Ind.popID',
-				verbose=self.verbosity):
-				if verbose > 1:
+				verbose=self.verbose):
+				if self.verbose > 1:
 					warn_str = "keyword argument 'popID' is not floatable, "
 					warn_str += "setting to 'None'"
 					print(warn_str)
 				popID = None
 			else:
 				if not isinstance(popID, int):
-					if verbose > 1:
+					if self.verbose > 1:
 						warn_str = "keyword argument 'popID' is not an integer,"
 						warn_str += " setting to integer."
 						print(warn_str)
@@ -102,77 +97,228 @@ class Individual(dict):
 
 		self.parents = deepcopy(parents)
 
-		#=======================================================================
-		#	Use modelDir to initialize param Name:Value
-		#=======================================================================
+	############################################################################
+	#	Use modelDir to initialize param Name:Value
+	############################################################################
 
 		modelDict = self.load_model()
+		infoDict = self._checkModelInfo(infoDict, modelDict)
 
-		self.init_params(modelDict)
+		self.init_params(infoDict)
 
 		return
 
 
+################################################################################
+#	Check Info Dict, Store Useful Info (Private to leave room for subclasses)
+################################################################################
+	def _checkInfo(self, infoDict):
+
+		infoDict = rfu.checkInfo(infoDict)#, verbose=self.verbose)
+
+		try:
+			self.verbose = infoDict['ind']['verbose']
+		except:
+			self.verbose = 0 
+
+		infoDict = self._checkRuntimeParams(infoDict)
+
+		self.infoDict = {}
+
+		self.infoDict['infoDir'] = infoDict['infoDir']
+		self.infoDict['modelDir'] = infoDict['modelDir']
+		self.infoDict['logDir'] = infoDict['logDir']
+		self.infoDict['cpDir'] = infoDict['cpDir']
+
+		self.simDict = infoDict['simulation'].copy()
+
+		self.objDict = infoDict['objectives'].copy()
+
+		return
+
+
+################################################################################
+#	Check Info Runtime Parameters (Private to leave room for subclasses)
+################################################################################
+	def _checkRuntimeParams(self, infoDict):
+
+		return infoDict
+
+################################################################################
+#	Check Info Model Dict (Private to leave room for subclasses)
+################################################################################
+	def _checkModelInfo(self, infoDict, modelDict):
+		"""
+			This function will simply check that any runtime parameters are
+			formatted correctly.  When the model is loaded, these can be checked
+			again and then when actually implementing parameter selection, we 
+			should use model.json, then check back with runfile/info.json to 
+			make sure all parameters are in bounds.
+		"""
+
+		try:
+			mDict = infoDict['modelParams'].copy()
+		except:
+			if self.verbose > 1:
+				warn_str = "No 'modelParams' parameters have been set, assuming"
+				print(warn_str + " defaults...")
+			infoDict['modelParams'] = modelDict['params'].copy()
+			return infoDict
+
+		if mDict == 'all':
+			infoDict['modelParams'] = modelDict['params'].copy()
+			return infoDict
+		else:
+			err_str = "infoDict['modelParams'] must be a dictionary!"
+			assert isinstance(mDict, dict), err_str
+
+		for key in mDict:
+			try:
+				_ = modelDict['params'][key]
+			except KeyError:
+				err_str = "No parameter '{key}' in model!"
+				raise ValueError(err_str)
+
+			tmp = mDict[key]
+			if not isinstance(tmp, list):
+				err_str = f"infoDict['modelParams']['{key}'] is not floatable!"
+				assert utl.is_floatable(tmp,
+					name=f"infoDict['modelParams']['{key}']",
+					verbose=self.verbose), err_str
+
+				minmax = modelDict['params'][key][1:]
+				infoDict['modelParams'][key] = [tmp, minmax[0], minmax[1]]
+
+			else:
+				err_str = f"infoDict['modelParams']['{key}'] must be a list"
+				err_str += " with 3 elements!"
+				assert len(tmp) == 3, err_str
+
+				err_str = f"min > max for infoDict['modelParams']['{key}']!"
+				assert tmp[1] <= tmp[2], err_str
+
+		for key in modelDict['params']:
+			try:
+				_ = mDict[key]
+			except KeyError:
+				infoDict['modelParams'][key] = deepcopy(modelDict['params'][key])
+
+		return infoDict
+
+
+################################################################################
+#	Load Model Callable
+################################################################################
 	def load_model(self):
 
-		if self.verbosity:
+		if self.verbose:
 			print("Loading model!")
 
-		modelPath = os.path.join(self.info['modelDir'], "modelDict.pkl")
+		if self.verbose > 1:
+			print(f"Trying to load model from {self.infoDict['modelDir']}...")
 
-		if self.verbosity > 1:
-			print(f"Trying to load {modelPath}...")
+		modelDict = self._load_model_dict()
 
-		modelDict = self._load_model_dict(modelPath)
-
-		if self.verbosity > 1:
+		if self.verbose > 1:
 			print(f"Loaded model {modelDict['name']}!")
-
-		self.model = modelDict['model']
 
 		return modelDict.copy()
 
-	def _load_model_dict(self, modelPath):
 
-		jsonPath = os.path.join(self.info['modelDir'], "model.json")
+################################################################################
+#	Load Model Dict (Private to leave room for subclass improvements)
+################################################################################
+	def _load_model_dict(self):
+
+		jsonPath = os.path.join(self.infoDict['modelDir'], "model.json")
 		with open(jsonPath, "r") as f:
 			modelDict = json.load(f)
 
 		indSpec = imputl.spec_from_file_location("model",
-			os.path.join(self.info['modelDir'], "model.py"))
+			os.path.join(self.infoDict['modelDir'], "model.py"))
 		foo = imputl.module_from_spec(indSpec)
 		indSpec.loader.exec_module(foo)
 		model = foo.model
 
 		modelDict['model'] = model
+		self.model = modelDict['model']
 
 		return modelDict
 
 
-	def init_params(self, modelDict):
+################################################################################
+#	Initialize Parameters
+################################################################################
+	def init_params(self, infoDict):
 
+		for key in infoDict['modelParams']:
+			if len(np.unique(infoDict['modelParams'][key])) == 1:
+				self[key] = deepcopy(infoDict['modelParams'][key][0])
 
+			elif not infoDict['ind']['randomInit']:
+				self[key] = deepcopy(infoDict['modelParams'][key][0])
+
+			else:
+				self[key] = self._set_init_param(infoDict, key)
 
 		return
-		# if self.verbosity:
-		# 	print("Initializing parameters!")
-
-		# paramPath = os.path.join(self.info['modelDir'], "paramDict.pkl")
-		# if self.verbosity > 1:
-		# 	print(f"Trying to load {paramPath}...")
-
-		# try:
-		# 	with open(paramPath, "wb") as f:
-		# 		paramDict = 
 
 
+################################################################################
+#	Initialize Random Parameters (Private Method)
+################################################################################
+	def _set_init_param(self, infoDict, key):
+		"""
+			This is the default random init function:
+
+			Uses randn about the initial guess with 5% of the max-min difference
+			as the width of the normal.
+
+			For conductances, does this on the *log* of the value.
+		"""
+
+		if key[0] == 'g':
+			tmp = np.log(infoDict['modelParams'][key])
+
+			stddev = 0.05*(tmp[2] - tmp[1])
+
+			out = tmp[0] + st.norm.rvs(0, scale=stddev)
+
+			if out < tmp[1]:
+				out = deepcopy(tmp[1])
+
+			if out > tmp[2]:
+				out = deepcopy(tmp[2])
+
+			return np.exp(out)
+
+		else:
+			tmp = infoDict['modelParams'][key]
+
+			stddev = 0.05*(tmp[2] - tmp[1])
+
+			out = tmp[0] + st.norm.rvs(0, scale=stddev)
+
+			if out < tmp[1]:
+				out = deepcopy(tmp[1])
+
+			if out > tmp[2]:
+				out = deepcopy(tmp[2])
+
+			return out
+
+
+
+################################################################################
+#	Run if __name__=="__main__"
+################################################################################
 if __name__ == "__main__":
 
 	infoPath = "./Runfiles/HH_Test/"
 
-	info = rfu.getInfo(infoPath, verbose=1)
+	infoDict = rfu.getInfo(infoPath, verbose=0)
 
-	ind = Individual(info)
+	ind = Individual(infoDict)
 
 
 

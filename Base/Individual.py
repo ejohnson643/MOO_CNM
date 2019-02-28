@@ -66,11 +66,11 @@ class Individual(dict):
 	############################################################################
 	#	Check inputs
 	############################################################################
-		# verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
-		# self.verbose = deepcopy(verbose)
 
+		## Check the input infoDict, create self.infoDict attribute.
 		self._checkInfo(infoDict)
 
+		## Check and set self.popID
 		if popID is not None:
 			if not utl.is_floatable(popID, name='Ind.popID',
 				verbose=self.verbose):
@@ -89,6 +89,7 @@ class Individual(dict):
 		
 		self.popID = deepcopy(popID)
 
+		## Check and set self.parents to keep track of who contributed to whom
 		if parents is not None:
 			err_str = "Keyword argument 'parents' is not list."
 			assert isinstance(parents, list), err_str
@@ -101,9 +102,14 @@ class Individual(dict):
 	#	Use modelDir to initialize param Name:Value
 	############################################################################
 
+		## Load model dictionary with model func and parameters
 		modelDict = self.load_model()
+
+		## Cross-reference infoDict and modelDict to ensure that all parameters
+		## are legal and non-contradictory.
 		infoDict = self._checkModelInfo(infoDict, modelDict)
 
+		## Initialize the parameters of Individual using the infoDict.
 		self.init_params(infoDict)
 
 		return
@@ -114,24 +120,30 @@ class Individual(dict):
 ################################################################################
 	def _checkInfo(self, infoDict):
 
-		infoDict = rfu.checkInfo(infoDict)#, verbose=self.verbose)
+		## This should already have been checked, so do it quietly.
+		infoDict = rfu.checkInfo(infoDict)
 
-		try:
-			self.verbose = infoDict['ind']['verbose']
-		except:
-			self.verbose = 0 
+		## Set individual's verbosity
+		self.verbose = infoDict['ind']['verbose']
 
+		## Check the runtime parameters specifically to make sure they match
+		## with model.ind (if, for example, we want a model to have different
+		## initialization, mutation, or xover processes).
 		infoDict = self._checkRuntimeParams(infoDict)
 
+		## Create infoDict attribute with limited contents compared to infoDict
 		self.infoDict = {}
 
+		## Store directories
 		self.infoDict['infoDir'] = infoDict['infoDir']
 		self.infoDict['modelDir'] = infoDict['modelDir']
 		self.infoDict['logDir'] = infoDict['logDir']
 		self.infoDict['cpDir'] = infoDict['cpDir']
 
+		## Store simulation parameters
 		self.simDict = infoDict['simulation'].copy()
 
+		## Store objectives parameters
 		self.objDict = infoDict['objectives'].copy()
 
 		return
@@ -144,6 +156,7 @@ class Individual(dict):
 
 		return infoDict
 
+
 ################################################################################
 #	Check Info Model Dict (Private to leave room for subclasses)
 ################################################################################
@@ -154,6 +167,10 @@ class Individual(dict):
 			again and then when actually implementing parameter selection, we 
 			should use model.json, then check back with runfile/info.json to 
 			make sure all parameters are in bounds.
+
+			Particularly, this function will make sure that any modifications
+			of the parameters and their bounds are legal.  This returns an
+			infoDict that can be used to initialize an Individual.
 		"""
 
 		try:
@@ -172,42 +189,54 @@ class Individual(dict):
 			err_str = "infoDict['modelParams'] must be a dictionary!"
 			assert isinstance(mDict, dict), err_str
 
-		for key in mDict:
-			try:
-				_ = modelDict['params'][key]
-			except KeyError:
-				err_str = "No parameter '{key}' in model!"
-				raise ValueError(err_str)
+		if len(mDict) > 0:
+			for key in mDict:
+				try:
+					_ = modelDict['params'][key]
+				except KeyError:
+					err_str = "No parameter '{key}' in model!"
+					raise ValueError(err_str)
 
-			tmp = mDict[key]
-			if not isinstance(tmp, list):
-				err_str = f"infoDict['modelParams']['{key}'] is not floatable!"
-				assert utl.is_floatable(tmp,
-					name=f"infoDict['modelParams']['{key}']",
-					verbose=self.verbose), err_str
+				tmp = mDict[key]
+				if not isinstance(tmp, list):
+					err_str = f"infoDict['modelParams']['{key}']"
+					err_str += "is not floatable!"
+					assert utl.is_floatable(tmp,
+						name=f"infoDict['modelParams']['{key}']",
+						verbose=self.verbose), err_str
 
-				minmax = modelDict['params'][key][1:]
-				infoDict['modelParams'][key] = [tmp, minmax[0], minmax[1]]
+					minmax = modelDict['params'][key][1:]
+					infoDict['modelParams'][key] = [tmp, minmax[0], minmax[1]]
 
-			else:
-				err_str = f"infoDict['modelParams']['{key}'] must be a list"
-				err_str += " with 3 elements!"
-				assert len(tmp) == 3, err_str
+				else:
+					err_str = f"infoDict['modelParams']['{key}'] must be a list"
+					err_str += " with 3 elements!"
+					assert len(tmp) == 3, err_str
 
-				err_str = f"min > max for infoDict['modelParams']['{key}']!"
-				assert tmp[1] <= tmp[2], err_str
+					err_str = f"min > max for infoDict['modelParams']['{key}']!"
+					assert tmp[1] <= tmp[2], err_str
 
 		for key in modelDict['params']:
 			try:
 				_ = mDict[key]
 			except KeyError:
-				infoDict['modelParams'][key] = deepcopy(modelDict['params'][key])
+				infoDict['modelParams'][key]= deepcopy(modelDict['params'][key])
+
+		try:
+			outCol = infoDict['simulation']['outCol']
+			assert outCol in modelDict['colDict'].keys()
+		except KeyError:
+			infoDict['simulation']['outCol'] = modelDict['colDict'].keys()[0]
+		except AssertionError:
+			err_str = "Unknown simulation variable "
+			err_str += f"{infoDict['simulation']['outCol']}..."
+			raise ValueError(err_str)
 
 		return infoDict
 
 
 ################################################################################
-#	Load Model Callable
+#	Load Model Dictionary
 ################################################################################
 	def load_model(self):
 
@@ -316,7 +345,7 @@ if __name__ == "__main__":
 
 	infoPath = "./Runfiles/HH_Test/"
 
-	infoDict = rfu.getInfo(infoPath, verbose=0)
+	infoDict = rfu.getInfo(infoPath, verbose=2)
 
 	ind = Individual(infoDict)
 

@@ -15,13 +15,17 @@
 	},
 
 	"mutation":{
-		"method":"normal",
-		"NMut":3,
-		"NCross":3
+		"method":"polynomial",
+		"eta":20.0
+	},
+
+	"crossover":{
+		"method":"simBinary",
+		"eta":20.0
 	},
 
 	"ind":{
-		"verbose":2,
+		"verbose":0,
 		"randomInit":true
 	},
 
@@ -33,7 +37,11 @@
 		"verbose":2
 	},
 
-	"modelParams":{},
+	"modelParams":{
+		"gK":	[0.36,	0.0001,	1000.0],
+		"gNa":	[1.2,	0.0001,	1000.0],
+		"gl":	[0.003,	0.0001,	1000.0]
+	},
 
 	"simulation":{},
 

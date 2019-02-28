@@ -3,17 +3,32 @@
 	"logDir":"./Logs/HH_Test/",
 	"cpDir":"./Checkpoints/HH_Test/",
 
-	"NGen":2,
-	"checkpoint_freq":1,
+	"EA":{
+		"NGen":2,
+		"cpFreq":1,
+
+		"archive_logs":true,
+		"remove_old_logs":false,
+
+		"archive_cps":true,
+		"remove_old_cps":false
+	},
 
 	"mutation":{
-		"method":"normal",
-		"NMut":3,
-		"NCross":3,
+		"method":"polynomial",
+		"eta":20.0,
+		"NMut":3
+	},
+
+	"crossover":{
+		"method":"simBinary",
+		"eta":20.0,
+		"fracCross":0.3
 	},
 
 	"ind":{
-		"verbose":1
+		"verbose":1,
+		"randomInit":true
 	},
 
 	"pop":{
@@ -24,9 +39,50 @@
 		"verbose":2
 	},
 
-	"archive_logs":true,
-	"remove_old_logs":false,
+	"modelParams":{},
 
-	"archive_cps":true,
-	"remove_old_cps":false,
+	"simulation":{
+		"holdCheck":true,
+		"equil":"holding",
+		"subProtDur":2000,
+		"dt":0.05,
+		"NPrint":0,
+		"outCol":"V"
+	},
+
+	"objectives":{
+		"Spikes":{
+			"exact":true
+		},
+		"ISI":{
+			"depol":"thirds",
+			"maxRate":50.0,
+			"kwds":{}
+		},
+		"Amp":{
+			"fit":"exp",
+			"kwds":{"verbose":2}
+		},
+		"PSD":{
+			"fit":"exp",
+			"kwds":{}
+		},
+		"RI":{
+			"type":"RI",
+			"kwds":{}
+		},
+		"kDist":{
+			"type":"rest",
+			"sigma":[2, 10],
+			"kwds":{}
+		}
+	},
+
+	"data":{
+		"genNewFeats":false,
+		"dates":{
+			"01/04/2011":[0, 1, 2, 3, 4, 5]
+		},
+		"dt":0.001
+	}
 }

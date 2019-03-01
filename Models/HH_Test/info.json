@@ -17,7 +17,8 @@
 	"mutation":{
 		"method":"polynomial",
 		"eta":20.0,
-		"NMut":3
+		"NMut":3,
+		"sigma":0.1
 	},
 
 	"crossover":{

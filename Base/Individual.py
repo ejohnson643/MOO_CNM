@@ -115,9 +115,9 @@ class Individual(dict):
 		return
 
 
-################################################################################
-#	Check Info Dict, Store Useful Info (Private to leave room for subclasses)
-################################################################################
+	############################################################################
+	#	Check Info Dict, Store Useful Info (Private Method)
+	############################################################################
 	def _checkInfo(self, infoDict):
 
 		## This should already have been checked, so do it quietly.
@@ -140,6 +140,12 @@ class Individual(dict):
 		self.infoDict['logDir'] = infoDict['logDir']
 		self.infoDict['cpDir'] = infoDict['cpDir']
 
+		## Store mutation parameters
+		self.mutDict = infoDict['mutation'].copy()
+
+		## Store crossover parameters
+		self.xOverDict = infoDict['crossover'].copy()
+
 		## Store simulation parameters
 		self.simDict = infoDict['simulation'].copy()
 
@@ -149,17 +155,17 @@ class Individual(dict):
 		return
 
 
-################################################################################
-#	Check Info Runtime Parameters (Private to leave room for subclasses)
-################################################################################
+	############################################################################
+	#	Check Info Runtime Parameters (Private Method)
+	############################################################################
 	def _checkRuntimeParams(self, infoDict):
 
 		return infoDict
 
 
-################################################################################
-#	Check Info Model Dict (Private to leave room for subclasses)
-################################################################################
+	############################################################################
+	#	Check Info Model Dict (Private Method)
+	############################################################################
 	def _checkModelInfo(self, infoDict, modelDict):
 		"""
 			This function will simply check that any runtime parameters are
@@ -235,9 +241,9 @@ class Individual(dict):
 		return infoDict
 
 
-################################################################################
-#	Load Model Dictionary
-################################################################################
+	############################################################################
+	#	Load Model Dictionary
+	############################################################################
 	def load_model(self):
 
 		if self.verbose:
@@ -254,9 +260,9 @@ class Individual(dict):
 		return modelDict.copy()
 
 
-################################################################################
-#	Load Model Dict (Private to leave room for subclass improvements)
-################################################################################
+	############################################################################
+	#	Load Model Dict (Private Method)
+	############################################################################
 	def _load_model_dict(self):
 
 		jsonPath = os.path.join(self.infoDict['modelDir'], "model.json")
@@ -293,9 +299,9 @@ class Individual(dict):
 		return
 
 
-################################################################################
-#	Initialize Random Parameters (Private Method)
-################################################################################
+	############################################################################
+	#	Initialize Random Parameters (Private Method)
+	############################################################################
 	def _set_init_param(self, infoDict, key):
 		"""
 			This is the default random init function:
@@ -337,6 +343,40 @@ class Individual(dict):
 			return out
 
 
+################################################################################
+#	Mutation Operators
+################################################################################
+	def mutate(self):
+		"""
+			Here we will interpret the mutation "method" and mutate the
+			individual *in-place*
+
+			The parameters for mutation are grabbed from the 'mutDict', which is
+			created at initialization of the Individual.
+
+			Specifically, if mutDict['method'] = 'normal', then the mutation
+			operator is a uniform Gaussian (normal) perturbation to a random
+			selection of parameters.  The method will only attempt to perturb 
+			parameters that are not fixed (i.e. that don't have lb=ub).  The
+			width of this Gaussian is given by mutDict['sigma'], which is the 
+			percentage of the total range (ub - lb) to use as a width.  The
+			default is 0.1 ( = 10% of total range).
+
+			If mutDict['method'] = 'polynomial', then the polynomial method
+			introduced in the original NSGA-II algorithm by Deb will be used.
+			This method has an equal likelihood of moving a parameter to the
+			left or right in its total range, allowing for greater exploration
+			of all of state space as well as allowing for points to remain near
+			the boundaries.
+		"""
+
+		if self.verbose:
+			print(f"\nMutating Individual {self.popID}!")
+		if self.mutDict['method'] == 'normal':
+			self.mutGaussian()
+
+		elif 
+
 
 ################################################################################
 #	Run if __name__=="__main__"
@@ -345,7 +385,7 @@ if __name__ == "__main__":
 
 	infoPath = "./Runfiles/HH_Test/"
 
-	infoDict = rfu.getInfo(infoPath, verbose=2)
+	infoDict = rfu.getInfo(infoPath, verbose=1)
 
 	ind = Individual(infoDict)
 

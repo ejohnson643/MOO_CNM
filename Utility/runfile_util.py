@@ -316,15 +316,27 @@ def _checkMutParams(infoDict, verbose=0):
 
 		return deepcopy(infoDict)
 
+	try:
+		NMut = infoDict['mutation']['NMut']
+		NMut = utl.force_pos_float(NMut,
+			name="infoDict['mutation']['NMut']", verbose=verbose)
+	except KeyError:
+		pass
+	except AssertionError:
+		del infoDict['mutation']['NMut']
+
 	if method == 'normal':
 		try:
-			NMut = infoDict['mutation']['NMut']
-			NMut = utl.force_pos_float(NMut,
-				name="infoDict['mutation']['NMut']", verbose=verbose)
+			sigma = infoDict['mutation']['sigma']
+			sigma = utl.force_pos_float(sigma,
+				name="infoDict['mutation']['sigma']", verbose=verbose)
 		except KeyError:
 			pass
 		except AssertionError:
-			del infoDict['mutation']['NMut']
+			del infoDict['mutation']['sigma']
+
+		err_str = "infoDict['mutation']['sigma'] must be <= 1!"
+		assert infoDict['mutation']['sigma'] <= 1, err_str
 
 	elif method == 'polynomial':
 		try:
@@ -504,6 +516,7 @@ def _checkObjParams(infoDict, verbose=0):
 	# 		"type":"rest",
 	# 		"sigma":[2, 10],
 	# 		"kwds":{}
+
 
 ################################################################################
 #	Check and Compare Nested Dictionaries (Replace dict1 with dict2 when empty)

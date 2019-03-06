@@ -94,7 +94,16 @@ def checkInfo(infoDict, verbose=0, isdefault=False):
 	## Check simulation protocol parameter fields of dict
 	infoDict = _checkSimParams(infoDict, verbose=verbose)
 
-	## Check SimProt, Objs, Model
+	## Check objectives parameters...
+	## This can be added to in model_Ind.
+	infoDict = _checkObjParams(infoDict, verbose=verbose)
+
+	## Check model parameters...
+	## This is done in Individual, since Individual acutally loads model
+	## parameters and such
+
+	## Check data parameters
+	infoDict = _checkDataParams(infoDict, verbose=verbose)
 
 	## Fill in all missing fields with defaults from modelDir/info.json
 	if not isdefault:
@@ -528,6 +537,37 @@ def _checkObjParams(infoDict, verbose=0):
 	# 		"type":"rest",
 	# 		"sigma":[2, 10],
 	# 		"kwds":{}
+
+	return deepcopy(infoDict)
+
+
+################################################################################
+#	Check Data Parameter Fields
+################################################################################
+def _checkDataParams(infoDict, verbose=0):
+
+	if verbose > 1:
+		print_str = "\nChecking Data Parameters in 'infoDict'!"
+		print(print_str)
+
+	## Make sure that the 'data' field in infoDict exists
+	try:
+		infoDict['data']
+	except KeyError:
+		infoDict['data'] = {}
+		return deepcopy(infoDict)
+
+	## Maybe finish this later...
+
+	# "data":{
+	# 	"genNewFeats":false,
+	# 	"dates":{
+	# 		"01/04/2011":[0, 1, 2, 3, 4, 5]
+	# 	},
+	# 	"dt":0.001
+	# }
+	
+	return deepcopy(infoDict)
 
 
 ################################################################################

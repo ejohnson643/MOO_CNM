@@ -15,7 +15,7 @@
 	},
 
 	"mutation":{
-		"method":"polynomial",
+		"method":"normal",
 		"eta":20.0
 	},
 
@@ -26,7 +26,8 @@
 
 	"ind":{
 		"verbose":0,
-		"randomInit":true
+		"randomInit":true,
+		"sigma":0.05
 	},
 
 	"pop":{

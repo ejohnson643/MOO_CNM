@@ -29,7 +29,8 @@
 
 	"ind":{
 		"verbose":1,
-		"randomInit":true
+		"randomInit":true,
+		"sigma":0.05
 	},
 
 	"pop":{

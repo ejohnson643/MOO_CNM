@@ -315,7 +315,7 @@ class Individual(dict):
 		if key[0] == 'g':
 			tmp = np.log(infoDict['modelParams'][key])
 
-			stddev = 0.05*(tmp[2] - tmp[1])
+			stddev = infoDict['ind']['sigma']*(tmp[2] - tmp[1])
 
 			out = tmp[0] + st.norm.rvs(0, scale=stddev)
 
@@ -330,7 +330,7 @@ class Individual(dict):
 		else:
 			tmp = infoDict['modelParams'][key]
 
-			stddev = 0.05*(tmp[2] - tmp[1])
+			stddev = infoDict['ind']['sigma']*(tmp[2] - tmp[1])
 
 			out = tmp[0] + st.norm.rvs(0, scale=stddev)
 
@@ -372,10 +372,90 @@ class Individual(dict):
 
 		if self.verbose:
 			print(f"\nMutating Individual {self.popID}!")
-		if self.mutDict['method'] == 'normal':
-			self.mutGaussian()
 
-		elif 
+		infoDict = rfu.getInfo(self.infoDict['infoDir'], verbose=self.verbose)
+		modelDict = self.load_model()
+		infoDict = self._checkModelInfo(infoDict, modelDict)
+
+		if self.mutDict['method'] == 'normal':
+			self.mutGaussian(infoDict['modelParams'].copy())
+
+		elif self.mutDict['method'] == 'polynomial':
+			self.mutPolynomialBounded(infoDict['modelParams'].copy())
+
+		else:
+			err_str = f"Unknown mutation method {self.mutDict['method']}."
+			raise ValueError(err_str)
+
+	############################################################################
+	#	Gaussian Mutation
+	############################################################################
+	def mutGaussian(self, paramBounds):
+		"""This method is based on the DEAP implementation found at 
+		"https://github.com/DEAP/deap/blob/master/deap/tools/mutation.py"
+		where parameters of the Individual are selected to be mutated with 
+		probability indpb = mutDict['NMut']/noParams (so that on average NMut 
+		params are mutated).  The selected parameters are then mutated with a
+		Gaussian centered at the current value with width = sigma*(ub-lb).
+		"""
+
+		varyParams = {}
+		for key in paramBounds:
+			if len(np.unique(paramBounds[key])) == 1:
+				continue
+			else:
+				bnds = paramBounds[key]
+				varyParams[key] = deepcopy(bnds)
+				sig = self.mutDict['sigma']*(bnds[2]-bnds[1])
+				varyParams[key] += [sig]
+
+				print(key, varyParams[key])
+
+		NParams = len(varyParams)
+		indPb = np.min([self.mutDict['NMut']/float(NParams), 1.])
+
+		for key in varyParams:
+			if np.random.rand() < indPb:
+
+				if key[0] == 'g':
+					param = np.log10(varyParams[key])
+
+				else:
+					param = np.log10(varyParams[key])
+
+				print(key, param)
+
+				sigma = varyParams[key][-1]
+
+				print("sigma", sigma)
+
+				perturb = st.norm.rvs(0, scale=sigma)
+
+				print("perturb", perturb)
+
+				if key[0] == 'g':
+					self[key] = np.log10(self[key] + perturb)
+				else:
+					self[key] += perturb
+
+				print(key, self[key])
+
+			if self[key] < param[1]:
+				self[key] = param[1]
+
+			if self[key] > param[2]:
+				self[key] = param[2]
+
+			if key[0] == 'g':
+				self[key] = 10**self[key]
+
+		return
+
+
+
+
+
+
 
 
 ################################################################################
@@ -385,9 +465,19 @@ if __name__ == "__main__":
 
 	infoPath = "./Runfiles/HH_Test/"
 
-	infoDict = rfu.getInfo(infoPath, verbose=1)
+	infoDict = rfu.getInfo(infoPath, verbose=2)
 
 	ind = Individual(infoDict)
+
+	for key in ind:
+		if key[0] == 'g':		
+			print(f"{key}: {ind[key]}")
+
+	ind.mutate()
+
+	for key in ind:
+		if key[0] == 'g':		
+			print(f"{key}: {ind[key]}")
 
 
 

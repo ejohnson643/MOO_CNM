@@ -217,6 +217,7 @@ def _checkIndParams(infoDict, verbose=0):
 	except AssertionError:
 		del infoDict['ind']['verbose']
 
+	## Check that 'ind.randomInit' is a boolean.
 	try:
 		tmp = infoDict['ind']['randomInit']
 
@@ -230,6 +231,17 @@ def _checkIndParams(infoDict, verbose=0):
 			print(" ... deleting")
 		del infoDict['ind']['randomInit']
 
+	## Check that 'ind.sigma' is a positive float < 1.
+	try:
+		tmp = infoDict['ind']['sigma']
+		tmp = utl.force_pos_int(tmp, name="infoDict['ind']['sigma']",
+			zero_ok=True, verbose=verbose)
+		assert tmp <= 1.
+		infoDict['ind']['sigma'] = tmp
+	except KeyError:
+		pass
+	except AssertionError:
+		del infoDict['ind']['sigma']
 
 	return deepcopy(infoDict)
 
@@ -330,13 +342,13 @@ def _checkMutParams(infoDict, verbose=0):
 			sigma = infoDict['mutation']['sigma']
 			sigma = utl.force_pos_float(sigma,
 				name="infoDict['mutation']['sigma']", verbose=verbose)
+
+			assert infoDict['mutation']['sigma'] <= 1, err_str
 		except KeyError:
 			pass
 		except AssertionError:
 			del infoDict['mutation']['sigma']
 
-		err_str = "infoDict['mutation']['sigma'] must be <= 1!"
-		assert infoDict['mutation']['sigma'] <= 1, err_str
 
 	elif method == 'polynomial':
 		try:

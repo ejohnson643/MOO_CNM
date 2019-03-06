@@ -58,6 +58,9 @@ import Utility.utility as utl
 
 class Individual(dict):
 
+################################################################################
+#	Initialize Object
+################################################################################
 	def __init__(self,
 		infoDict,
 		popID=None,
@@ -103,7 +106,7 @@ class Individual(dict):
 	############################################################################
 
 		## Load model dictionary with model func and parameters
-		modelDict = self.load_model()
+		modelDict = self.load_model(verbose=self.verbose)
 
 		## Cross-reference infoDict and modelDict to ensure that all parameters
 		## are legal and non-contradictory.
@@ -113,7 +116,6 @@ class Individual(dict):
 		self.init_params(infoDict)
 
 		return
-
 
 	############################################################################
 	#	Check Info Dict, Store Useful Info (Private Method)
@@ -179,6 +181,23 @@ class Individual(dict):
 			infoDict that can be used to initialize an Individual.
 		"""
 
+		## First check that the specified "outCol" is actually a parameter in
+		## the model.
+		try:
+			outCol = infoDict['simulation']['outCol']
+			assert outCol in modelDict['colDict'].keys()
+		## If not specified, set to the first parameter in the model
+		except KeyError:
+			infoDict['simulation']['outCol'] = modelDict['colDict'].keys()[0]
+		## Otherwise raise an error
+		except AssertionError:
+			err_str = "Unknown simulation variable "
+			err_str += f"{infoDict['simulation']['outCol']}..."
+			raise ValueError(err_str)
+
+		## Then check the given model parameters to vary.
+		## If no parameters have been specified to be varied, then revert to 
+		## model defaults from modelDict (from model.json)
 		try:
 			mDict = infoDict['modelParams'].copy()
 		except:
@@ -188,55 +207,69 @@ class Individual(dict):
 			infoDict['modelParams'] = modelDict['params'].copy()
 			return infoDict
 
+		## If infoDict['modelParams'] is "all", then use model defaults and
+		## vary all allowed parameters.
 		if mDict == 'all':
 			infoDict['modelParams'] = modelDict['params'].copy()
 			return infoDict
-		else:
+
+		else:  ## Otherwise, check that what was given is a dictionary.
 			err_str = "infoDict['modelParams'] must be a dictionary!"
 			assert isinstance(mDict, dict), err_str
 
+		## If list of parameters to vary is a non-empty dictionary...
 		if len(mDict) > 0:
 			for key in mDict:
+
+				## Check that each key is a parameter in the model.
 				try:
 					_ = modelDict['params'][key]
 				except KeyError:
 					err_str = "No parameter '{key}' in model!"
 					raise ValueError(err_str)
 
+				## Check if the value is a list...
 				tmp = mDict[key]
 				if not isinstance(tmp, list):
+
+					if tmp is None:
+						mP = modelDict['params'][key].copy()
+						infoDict['modelParams'][key] = mP
+						continue
+
 					err_str = f"infoDict['modelParams']['{key}']"
 					err_str += "is not floatable!"
+					## Check that it is floatable
 					assert utl.is_floatable(tmp,
-						name=f"infoDict['modelParams']['{key}']",
-						verbose=self.verbose), err_str
+						name=f"infoDict['modelParams']['{key}']"), err_str
 
+					## Set the bounds using the defaults
 					minmax = modelDict['params'][key][1:]
 					infoDict['modelParams'][key] = [tmp, minmax[0], minmax[1]]
 
+				## If it is a list, check that it is a 3-element list of floats
+				## and check that the given minimum is less than the max.
 				else:
 					err_str = f"infoDict['modelParams']['{key}'] must be a list"
 					err_str += " with 3 elements!"
 					assert len(tmp) == 3, err_str
 
+					for ii, el in enumerate(tmp):
+						err_str = f"Element {ii} of "
+						err_str += f"infoDict['modelParams']['{key}'] is not "
+						err_str += "float able!"
+						assert utl.is_floatable(el), err_str
+
 					err_str = f"min > max for infoDict['modelParams']['{key}']!"
 					assert tmp[1] <= tmp[2], err_str
 
+		## Now check the inverse, that every parameter in modelDict is in 
+		## infoDict['modelParam']
 		for key in modelDict['params']:
 			try:
 				_ = mDict[key]
 			except KeyError:
 				infoDict['modelParams'][key]= deepcopy(modelDict['params'][key])
-
-		try:
-			outCol = infoDict['simulation']['outCol']
-			assert outCol in modelDict['colDict'].keys()
-		except KeyError:
-			infoDict['simulation']['outCol'] = modelDict['colDict'].keys()[0]
-		except AssertionError:
-			err_str = "Unknown simulation variable "
-			err_str += f"{infoDict['simulation']['outCol']}..."
-			raise ValueError(err_str)
 
 		return infoDict
 
@@ -244,17 +277,17 @@ class Individual(dict):
 	############################################################################
 	#	Load Model Dictionary
 	############################################################################
-	def load_model(self):
+	def load_model(self, verbose=0):
 
-		if self.verbose:
+		if verbose:
 			print("Loading model!")
 
-		if self.verbose > 1:
+		if verbose > 1:
 			print(f"Trying to load model from {self.infoDict['modelDir']}...")
 
 		modelDict = self._load_model_dict()
 
-		if self.verbose > 1:
+		if verbose > 1:
 			print(f"Loaded model {modelDict['name']}!")
 
 		return modelDict.copy()
@@ -347,41 +380,40 @@ class Individual(dict):
 #	Mutation Operators
 ################################################################################
 	def mutate(self):
-		"""
-			Here we will interpret the mutation "method" and mutate the
-			individual *in-place*
+		"""Individual.mutate(): Mutates Individual object *in-place.*
 
-			The parameters for mutation are grabbed from the 'mutDict', which is
-			created at initialization of the Individual.
+		The method and parameters for mutation are grabbed from the 'mutDict', 
+		which is created at initialization of the Individual.
 
-			Specifically, if mutDict['method'] = 'normal', then the mutation
-			operator is a uniform Gaussian (normal) perturbation to a random
-			selection of parameters.  The method will only attempt to perturb 
-			parameters that are not fixed (i.e. that don't have lb=ub).  The
-			width of this Gaussian is given by mutDict['sigma'], which is the 
-			percentage of the total range (ub - lb) to use as a width.  The
-			default is 0.1 ( = 10% of total range).
+		Specifically, if mutDict['method'] = 'normal', then the mutation
+		operator is a uniform Gaussian (normal) perturbation to a random
+		selection of parameters.  
 
-			If mutDict['method'] = 'polynomial', then the polynomial method
-			introduced in the original NSGA-II algorithm by Deb will be used.
-			This method has an equal likelihood of moving a parameter to the
-			left or right in its total range, allowing for greater exploration
-			of all of state space as well as allowing for points to remain near
-			the boundaries.
+		If mutDict['method'] = 'polynomial', then the polynomial method
+		introduced in the original NSGA-II algorithm by Deb will be used.
+		This method has an equal likelihood of moving a parameter to the
+		left or right in its total range, allowing for greater exploration
+		of all of state space as well as allowing for points to remain near
+		the boundaries.
 		"""
 
 		if self.verbose:
-			print(f"\nMutating Individual {self.popID}!")
+			if self.popID is not None:
+				print(f"\nMutating Individual {self.popID}!\n")
+			else:
+				print(f"\nMutating Individual!\n")
 
-		infoDict = rfu.getInfo(self.infoDict['infoDir'], verbose=self.verbose)
-		modelDict = self.load_model()
-		infoDict = self._checkModelInfo(infoDict, modelDict)
+		# infoDict = rfu.getInfo(self.infoDict['infoDir'], verbose=self.verbose)
+		# modelDict = self.load_model()
+		# infoDict = self._checkModelInfo(infoDict, modelDict)
+
+		paramBounds = self._getParamBounds()
 
 		if self.mutDict['method'] == 'normal':
-			self.mutGaussian(infoDict['modelParams'].copy())
+			self.mutGaussian(paramBounds.copy())
 
 		elif self.mutDict['method'] == 'polynomial':
-			self.mutPolynomialBounded(infoDict['modelParams'].copy())
+			self.mutPolynomialBounded(paramBounds.copy())
 
 		else:
 			err_str = f"Unknown mutation method {self.mutDict['method']}."
@@ -391,14 +423,35 @@ class Individual(dict):
 	#	Gaussian Mutation
 	############################################################################
 	def mutGaussian(self, paramBounds):
-		"""This method is based on the DEAP implementation found at 
+		""" Individual.mutGaussian(): Mutates Individual object in-place using a
+		Gaussian perturbation to a random selection of parameters.
+
+		This method is loosely based on the DEAP implementation found at 
 		"https://github.com/DEAP/deap/blob/master/deap/tools/mutation.py"
 		where parameters of the Individual are selected to be mutated with 
 		probability indpb = mutDict['NMut']/noParams (so that on average NMut 
-		params are mutated).  The selected parameters are then mutated with a
-		Gaussian centered at the current value with width = sigma*(ub-lb).
+		params are mutated).  
+
+		The selected parameters are then mutated with a Gaussian centered at 
+		the current value with width = sigma*(ub-lb). The width of this Gaussian
+		is given by mutDict['sigma'], which is the percentage of the total range
+		(ub - lb) to use as a width.  The default is 0.1 ( = 10% of total range).
+
+		Also, by default, conductance parameters, which are assumed to start
+		with 'g' have the Gaussian perturbation applied to the *log* of their
+		values so that they can explore a larger parameter range more easily.
+
+		Inputs:
+		=======
+		paramBounds:	(Dict)	Dictionary with same keys as Individual object,
+								but where each parameter key yields a list with
+								the parameter's [default, lower bound, upper 
+								bound].  
+
+								(Can be obtained with self._getParamBounds())
 		"""
 
+		## Find parameters that are subject to variation
 		varyParams = {}
 		for key in paramBounds:
 			if len(np.unique(paramBounds[key])) == 1:
@@ -406,55 +459,176 @@ class Individual(dict):
 			else:
 				bnds = paramBounds[key]
 				varyParams[key] = deepcopy(bnds)
-				sig = self.mutDict['sigma']*(bnds[2]-bnds[1])
+				varyParams[key][0] = self[key]
+
+				## If a conductance parameter, want to operate on log scale
+				if key[0] == 'g':
+					sig = self.mutDict['sigma']*np.log10(bnds[2]-bnds[1])
+				## Else sig = fraction of total range
+				else:
+					sig = self.mutDict['sigma']*(bnds[2]-bnds[1])
 				varyParams[key] += [sig]
 
-				print(key, varyParams[key])
+		if self.verbose > 1:
+			print("Variable Parameters:")
+			for key in varyParams:
+				print_str = f"{key}:\t"
+				print_str += ",\t".join([f"{el:7.3g}"
+					for el in varyParams[key]])
+				print(print_str)
 
+		## Calculate probability of individual parameter being mutated
 		NParams = len(varyParams)
 		indPb = np.min([self.mutDict['NMut']/float(NParams), 1.])
 
+		if self.verbose > 1:
+			print(f"\nThere are {NParams} to vary, " + 
+				f"so mutation pb = {indPb:.2f}")
+
+		## Iterate through parameters
 		for key in varyParams:
-			if np.random.rand() < indPb:
+			## If not selected for mutation, continue
+			if np.random.rand() >= indPb:
+				continue
 
-				if key[0] == 'g':
-					param = np.log10(varyParams[key])
+			## If a conductance parameter, want to operate on log scale
+			if key[0] == 'g':
+				param = list(np.log10(varyParams[key][:-1]))
+				param += [varyParams[key][-1]]
+			## Else sig = fraction of total range
+			else:
+				param = varyParams[key]
 
-				else:
-					param = np.log10(varyParams[key])
+			## Generate normal perturbation with correct width
+			perturb = st.norm.rvs(0, scale=varyParams[key][-1])
 
-				print(key, param)
+			self[key] += perturb
 
-				sigma = varyParams[key][-1]
+			## Check bounds
+			self[key] = min(max(self[key], param[1]), param[2])
 
-				print("sigma", sigma)
-
-				perturb = st.norm.rvs(0, scale=sigma)
-
-				print("perturb", perturb)
-
-				if key[0] == 'g':
-					self[key] = np.log10(self[key] + perturb)
-				else:
-					self[key] += perturb
-
-				print(key, self[key])
-
-			if self[key] < param[1]:
-				self[key] = param[1]
-
-			if self[key] > param[2]:
-				self[key] = param[2]
-
+			## If conductance parameter, return from log-scaling
 			if key[0] == 'g':
 				self[key] = 10**self[key]
 
 		return
 
 
+	############################################################################
+	#	Bounded Polynomial Mutation
+	############################################################################
+	def mutPolynomialBounded(self, paramBounds):
+		"""Individual.mutPolynomialBounded(): Mutates Individual object in-place
+		using the bounded polynomial method implemented in the original NSGA-II
+		algorithm by Deb (2002).
+
+		This method has an equal likelihood of moving a parameter to the left or
+		right in its total range, allowing for greater exploration of all of
+		state space as well as allowing for points to remain near the
+		boundaries.  This method requires the specification of a "crowding
+		degree" parameter called eta, where a large eta will produce mutants
+		that are similar to their parents, while smaller eta produce mutatnts
+		that are more different from their parents.  The default value is 20.
+
+		This method also selects parameters to mutate uniformly with a
+		probability so that mutDict['NMut'] out of all varying parameters are
+		mutated.  Only parameters that are not fixed (i.e. that don't have their
+		lower bound == upper bound) are subject to this selection.
+
+		This code is based on the implementation of this method in the deap
+		package: https://github.com/DEAP/
+
+		Inputs:
+		=======
+		paramBounds:	(Dict)	Dictionary with same keys as Individual object,
+								but where each parameter key yields a list with
+								the parameter's [default, lower bound, upper 
+								bound].  
+
+								(Can be obtained with self._getParamBounds())
+		"""
+		
+		## Find parameters that are subject to variation
+		varyParams = {}
+		for key in paramBounds:
+			if len(np.unique(paramBounds[key])) == 1:
+				continue
+			else:
+				bnds = paramBounds[key]
+				varyParams[key] = deepcopy(bnds)
+				varyParams[key][0] = self[key]
+
+		if self.verbose > 1:
+			print("Variable Parameters:")
+			for key in varyParams:
+				print_str = f"{key}:\t"
+				print_str += ",\t".join([f"{el:7.3g}"
+					for el in varyParams[key]])
+				print(print_str)
+
+		## Get eta parameter
+		eta = self.mutDict['eta']
+		mutPow = 1. / (eta + 1.)
+
+		if self.verbose > 1:
+			print(f"\neta = {eta}\t(mut pow = {mutPow:.3g})")
+
+		## Calculate probability that an individual parameter will be varied
+		NParams = len(varyParams)
+		indPb = np.min([self.mutDict['NMut']/float(NParams), 1.])
+
+		if self.verbose > 1:
+			print(f"\nThere are {NParams} to vary, " + 
+				f"so mutation pb = {indPb:.2f}")
+
+		## Iterate through 
+		for ii, key in enumerate(varyParams):
+
+			## If not selected for mutation, continue
+			if np.random.rand() >= indPb:
+				continue
+
+			x, lb, ub = varyParams[key]
+
+			## Draw random number
+			rand = np.random.rand()
+
+			## If rand < 0.5, move left
+			if rand < 0.5:
+				delta1 = (x - lb) / (ub - lb)
+				xy = 1. - delta1
+				val = 2.*rand + (1. - 2.*rand) * xy**(eta + 1.)
+				deltaQ = val**mutPow - 1.
+			## If rand > 0.5, move right
+			else:
+				delta2 = (ub - x) / (ub - lb)
+				xy = 1. - delta2
+				val = 2.*(1. - rand) + 2.*(rand - 0.5) * xy**(eta + 1.)
+				deltaQ = 1. - val**mutPow
+
+			## Update with perturbation and check bounds
+			x += deltaQ*(ub - lb)
+			self[key] = min(max(x, lb), ub)
+
+		return
 
 
+	############################################################################
+	#	Get Parameter Bounds
+	############################################################################
+	def _getParamBounds(self, verbose=0):
+		"""self._getParamBounds(verbose=0): Quickly grabs the dictionary of
+		parameters and their bounds by compiling the *full* info dict and
+		returning infoDict['modelParams']
+		"""
 
+		verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
+
+		infoDict = rfu.getInfo(self.infoDict['infoDir'], verbose=verbose)
+		modelDict = self.load_model(verbose=verbose)
+		infoDict = self._checkModelInfo(infoDict, modelDict)
+
+		return infoDict['modelParams'].copy()
 
 
 
@@ -465,19 +639,21 @@ if __name__ == "__main__":
 
 	infoPath = "./Runfiles/HH_Test/"
 
-	infoDict = rfu.getInfo(infoPath, verbose=2)
+	infoDict = rfu.getInfo(infoPath, verbose=0)
 
 	ind = Individual(infoDict)
 
+	print("\nShowing variable parameters:")
 	for key in ind:
 		if key[0] == 'g':		
-			print(f"{key}: {ind[key]}")
+			print(f"{key}: {ind[key]:.3g}")
 
 	ind.mutate()
 
+	print("\nShowing mutated parameters:")
 	for key in ind:
 		if key[0] == 'g':		
-			print(f"{key}: {ind[key]}")
+			print(f"{key}: {ind[key]:.3g}")
 
 
 

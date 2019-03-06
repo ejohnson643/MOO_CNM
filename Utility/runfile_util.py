@@ -234,7 +234,7 @@ def _checkIndParams(infoDict, verbose=0):
 	## Check that 'ind.sigma' is a positive float < 1.
 	try:
 		tmp = infoDict['ind']['sigma']
-		tmp = utl.force_pos_int(tmp, name="infoDict['ind']['sigma']",
+		tmp = utl.force_pos_float(tmp, name="infoDict['ind']['sigma']",
 			zero_ok=True, verbose=verbose)
 		assert tmp <= 1.
 		infoDict['ind']['sigma'] = tmp

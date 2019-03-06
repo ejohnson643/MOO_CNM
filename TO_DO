@@ -1,0 +1,112 @@
+==============
+==  TO DO:  ==
+==============
+
+March 6:
+========
+
+ BIG GOAL:
+ 	- Improved summary of red-check data with pictures for EVERY sample,
+ 	  cross-referenced with Matt's notes, and methods tuned for that data.
+ 	- Summary of bicycle model compared to data.
+
+ - Create data processing tools
+ 	- Write functions for ease of visualization
+ 	- Implement objective evaluation functions
+ 	- Write functions for ease of visualization of data with objectives results
+ 	  on top.
+ 	- Write functions that make it very easy to load data.
+ 		- Provide a template for how to do simple things:
+ 			- Load a date
+ 			- Load a single file
+ 			- Load several dates
+ 			- Load all of specific protocol from given dates
+ 	- Write tool to cross-reference with red_checks_data.csv
+ 		- Report date of data, ZT, genotype, parameters that Flourakis measured
+
+ - Write functions to generate simulation protocol structure.
+ 	- Based on data
+ 	- By hand?
+ 	- What should this structure be?
+
+ - Port over abf_util to MOO_CNM (should just be copy/paste)
+
+ - Create summary figures of each objective over time
+ 	- FR, MemPot, SpikeAmp, RI, tau, C
+ 		- (Fitted) scatter plots
+ 		- Box plots
+
+ - Show representatives for each time bin
+
+ - Implement Bicycle model... (do this with Individual class if possible!)
+ 	- Show its features under different standard protocols
+ 	- Write simulation functions
+ 	- Write Individual visualization functions
+
+
+Overall:
+========
+
+ - Create runfile which does:
+ 	- Load and check runfile (info.json)
+ 	- Process data, create data features structure and simulation protocols
+ 	- Set up parallel structure
+ 	- Run the whole shebang (distribute evaluation of individuals)
+
+ - Create functional Population class that can
+ 	- Mutate
+ 	- Crossover
+ 	- Evaluate (non-parallel)
+ 	- Select Best Individuals
+
+ - Create functional Individual class that can
+ 	- Load model function and parameters
+ 	- Mutate
+ 	- Crossover with another Ind
+ 	- Evaluate itself
+ 	- Simulate itself??
+ 	- Visualize simulations?
+
+ - Create utilities for
+ 	- Protocol dictionaries
+ 	- Data I/O
+ 	- Working with ABF files
+ 	- General data checking
+ 	- Processing info
+
+ - Create objectives functions
+ 	- Functions to parse dataFeat
+ 	- Functions to create dataFeat
+ 	- Functions to measure:
+ 		- ISI, MemPot, SpikeAmp, RI, tau, C
+ 		- Reliably and automatically
+
+ - Create models
+ 	- Functions for simulating models according to protocols
+ 	- Functions for inferring protocols from data
+ 	- Functions for visualizing models
+ 		- Decide how to store trajectories...
+ 		- Probably good to have tool to easily create new trajectories.
+
+ - Create functional Hall of Fame class
+ 	- Update!
+ 		- Using stereographic projection, medians need to be updated!?
+ 	- Is there a way to parallelize this step?
+
+ - Think about:
+ 	- Protocol structures
+ 	- Data features structures
+ 	- Generating fake data from model, test procedures
+ 	- Post-run processing
+ 		- How to visualize Pareto Front
+ 		- Visualize convergence!
+
+In Progress:
+============
+ - Runfile checking
+ - Individual
+ - Population
+ - Model Implementation
+
+Finished:
+=========

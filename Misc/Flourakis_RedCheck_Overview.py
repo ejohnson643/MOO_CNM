@@ -108,7 +108,31 @@ if __name__ == "__main__":
 
 	gen_new_data = False
 	check_for_data = False
-	
+
+	csvfile = "../RedChecksData_Flourakis.csv"
+
+	converters = {
+		'ZT': convert_time,
+		'Neuron':make_float,
+		'Page No.':strip,
+		'Geno':strip,
+		'FR':make_float,
+		'Vm':make_float,
+		'RI':make_float, 
+		'Check':make_float,
+		'Flag':make_float,
+		"Recordings":check_list}
+
+	df = pd.read_csv(csvfile, sep=',', header=0,
+		index_col=0, converters=converters)
+	df['WT'] = df.apply(isWT, axis=1)
+
+	WT = df.loc[df['WT']]
+
+	infoDir = "./Runfiles/RedCheck_Overview/"
+
+	info = rfu.getInfo(infoDir, verbose=2)
+
 ################################################################################
 ## Show plots!
 ################################################################################

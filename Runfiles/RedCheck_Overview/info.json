@@ -1,0 +1,22 @@
+{
+	"objectives":{
+		"Spikes":{
+			"exact":true
+		},
+		"ISI":{
+			"depol":"thirds",
+			"kwds":{}
+		},
+		"Amp":{
+			"fit":"exp",
+			"kwds":{}
+		},
+		"PSD":{
+			"fit":"exp",
+			"kwds":{}
+		},
+		"RI":{
+			"type":"RI",
+			"kwds":{}
+		}
+}

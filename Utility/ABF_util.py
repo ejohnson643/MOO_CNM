@@ -302,11 +302,7 @@ def ABF_read(filename,
 #===============================================================================
 
 	# Check that verbose is a nonnegative integer.
-	if not utl._check_pos_float(verbose, zero_ok=True):
-		err_str = "Keyword argument 'verbose' is not an integer."
-		raise TypeError(err_str)
-	else:
-		verbose = int(verbose)
+	verbose = utl.force_pos_float(verbose, name='verbose', zero_ok=True)
 
 	# Check that the given filename is valid.
 	check_valid_abf_file(filename)
@@ -331,7 +327,7 @@ def ABF_read(filename,
 			print_str = "Data taken on %s" % full_date_str
 			print(print_str)
 
-		datedir = utl._find_date_folder(date)
+		datedir = utl.find_date_folder(date)
 	else:
 		datedir = datadir
 

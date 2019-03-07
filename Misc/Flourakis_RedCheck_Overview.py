@@ -87,13 +87,29 @@ def isWT(entry):
 	else:
 		return False
 
-#===============================================================================
-#	Set Protocol Parameters
-#===============================================================================
-if True:
-	EPHYS_PROT_REST				= 0
-	EPHYS_PROT_DEPOLSTEP		= 1
-	EPHYS_PROT_HYPERPOLSTEP		= 2
-	EPHYS_PROT_DEPOLSTEPS		= 3
-	EPHYS_PROT_HYPERPOLSTEPS	= 4
-	EPHYS_PROT_CONSTHOLD		= 5
+
+################################################################################
+## Runtime Commands
+################################################################################
+if __name__ == "__main__":
+
+	plt.close('all')
+	sns.set({'legend.frameon':True}, color_codes=True)
+	matplotlib.rc("font", size=20)
+	matplotlib.rc("xtick", labelsize=16)
+	matplotlib.rc("ytick", labelsize=16)
+	matplotlib.rc("axes", labelsize=20)
+	matplotlib.rc("axes", titlesize=24)
+	matplotlib.rc("legend", fontsize=18)
+	matplotlib.rc("figure", titlesize=24)
+
+	dataDir = "../Data/FlourakisData/2P/"
+	figDir = "./Figures/RedCheck_Overview/"
+
+	gen_new_data = False
+	check_for_data = False
+	
+################################################################################
+## Show plots!
+################################################################################
+	plt.show()

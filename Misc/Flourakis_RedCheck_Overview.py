@@ -41,6 +41,11 @@ import pandas as pd
 import pickle as pkl
 import seaborn as sns
 
+import Utility.ABF_util as abf
+import Utility.DataIO_util as DIO
+import Utility.runfile_util as rfu
+import Utility.utility as utl
+
 ################################################################################
 ## Text Processing Functions for Loading CSV
 ################################################################################
@@ -103,13 +108,19 @@ if __name__ == "__main__":
 	matplotlib.rc("legend", fontsize=18)
 	matplotlib.rc("figure", titlesize=24)
 
-	dataDir = "../Data/FlourakisData/2P/"
 	figDir = "./Figures/RedCheck_Overview/"
 
 	gen_new_data = False
-	check_for_data = False
+	check_for_data = True
 
-	csvfile = "../RedChecksData_Flourakis.csv"
+	infoDir = "./Runfiles/RedCheck_Overview/"
+
+	infoDict = rfu.getInfo(infoDir, verbose=1)
+
+################################################################################
+## Load csv
+################################################################################
+	csvfile = "../EA_Code/RedChecksData_Flourakis.csv"
 
 	converters = {
 		'ZT': convert_time,
@@ -129,9 +140,25 @@ if __name__ == "__main__":
 
 	WT = df.loc[df['WT']]
 
-	infoDir = "./Runfiles/RedCheck_Overview/"
+################################################################################
+## Iterate through WT dates
+################################################################################
+	for dateNo, date in enumerate(WT.index.values):
 
-	info = rfu.getInfo(infoDir, verbose=2)
+		if not check_for_data:
+			continue
+
+		print(f"\nLoading data from {date} ({dateNo+1}/{len(WT.index.values)})")
+
+		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
+		print(dateStr)
+
+		print(WT.ZT[date])
+		infoDict['data']['dates'] = {dateStr:None}
+
+		dataDict = DIO.load_data(infoDict['data'], verbose=2)
+
+		break
 
 ################################################################################
 ## Show plots!

@@ -138,11 +138,12 @@ def load_data_from_date(date, fileNos, dataDir, verbose=0):
 	err_str = "Input argument 'date' must be a string."
 	assert isinstance(date, str), err_str
 
-	## Check that fileNos are a list of integers
-	err_str = "Input argument 'fileNos' must be a list."
-	assert isinstance(fileNos, list), err_str
-
 	if fileNos is not None:
+
+		## Check that fileNos are a list of integers
+		err_str = "Input argument 'fileNos' must be a list."
+		assert isinstance(fileNos, list), err_str
+
 		for ii, fNo in enumerate(fileNos):
 			fileNos[ii] = utl.force_pos_int(fNo, name=f'fileNos[{ii}]',
 				zero_ok=True)
@@ -310,8 +311,8 @@ def find_date_folder(dateTpl, dataDir, verbose=0):
 			monthDir = os.path.join(dataDir, folder)
 			if os.path.isdir(monthDir):
 				if folderName in os.listdir(monthDir):
+					dataDir = os.path.join(monthDir, folderName)
 					if verbose > 1:
-						dataDir = os.path.join(monthDir, folderName)
 						print(f"Date folder: {dataDir}")
 					return dataDir
 
@@ -325,8 +326,8 @@ def find_date_folder(dateTpl, dataDir, verbose=0):
 
 	## Then check again that it is not in yearDir
 	if folderName in os.listdir(dataDir):
+		dataDir = os.path.join(dataDir, folderName)
 		if verbose > 1:
-			dataDir = os.path.join(dataDir, folderName)
 			print(f"Date folder: {dataDir}")
 		return dataDir
 
@@ -336,8 +337,8 @@ def find_date_folder(dateTpl, dataDir, verbose=0):
 			monthDir = os.path.join(dataDir, folder)
 			if os.path.isdir(monthDir):
 				if folderName in os.listdir(monthDir):
+					dataDir = os.path.join(monthDir, folderName)
 					if verbose > 1:
-						dataDir = os.path.join(monthDir, folderName)
 						print(f"Date folder: {dataDir}")
 					return dataDir
 
@@ -350,8 +351,8 @@ def find_date_folder(dateTpl, dataDir, verbose=0):
 	for folder in os.listdir(dataDir):
 		if os.path.isdir(os.path.join(dataDir,folder)):
 			if folderref.match(folder):
+				dataDir = os.path.join(dataDir, folder)
 				if verbose > 1:
-					dataDir = os.path.join(dataDir, folder)
 					print(f"Date folder: {dataDir}")
 				return dataDir
 

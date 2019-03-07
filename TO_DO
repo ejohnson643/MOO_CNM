@@ -101,6 +101,12 @@ Overall:
  		- How to visualize Pareto Front
  		- Visualize convergence!
 
+ - runfile_util.check_defaults should only replace *necessary* or *convenient*
+   parameters, not all...
+   	- See infoDict['data'] when input disagrees with default.
+   		- Or any case where we just want to check that there is *any* key, not 
+   		  a specific one.
+
 In Progress:
 ============
  - Runfile checking

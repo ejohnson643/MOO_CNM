@@ -41,10 +41,25 @@ import pandas as pd
 import pickle as pkl
 import seaborn as sns
 
+import Objectives.Electrophysiology.ephys_objs as epo
+import Objectives.Electrophysiology.ephys_util as epu
+
 import Utility.ABF_util as abf
 import Utility.DataIO_util as DIO
 import Utility.runfile_util as rfu
 import Utility.utility as utl
+
+
+################################################################################
+##	Set Protocol ID Numbers
+################################################################################
+if True:
+	EPHYS_PROT_REST				= 0
+	EPHYS_PROT_DEPOLSTEP		= 1
+	EPHYS_PROT_HYPERPOLSTEP		= 2
+	EPHYS_PROT_DEPOLSTEPS		= 3
+	EPHYS_PROT_HYPERPOLSTEPS	= 4
+	EPHYS_PROT_CONSTHOLD		= 5
 
 ################################################################################
 ## Text Processing Functions for Loading CSV
@@ -110,7 +125,7 @@ if __name__ == "__main__":
 
 	figDir = "./Figures/RedCheck_Overview/"
 
-	gen_new_data = False
+	gen_new_data = True
 	check_for_data = True
 
 	infoDir = "./Runfiles/RedCheck_Overview/"
@@ -148,16 +163,60 @@ if __name__ == "__main__":
 		if not check_for_data:
 			continue
 
-		print(f"\nLoading data from {date} ({dateNo+1}/{len(WT.index.values)})")
+		# print(f"\nLoading data from {date} ({dateNo+1}/{len(WT.index.values)})")
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
+
+		dateStr = "01/04/2011"
 		print(dateStr)
 
 		print(WT.ZT[date])
 		infoDict['data']['dates'] = {dateStr:None}
 
-		dataDict = DIO.load_data(infoDict['data'], verbose=2)
+		dataDict = DIO.load_data(infoDict['data'], verbose=0)
 
+		dataDir = DIO.get_data_dir(dataDir="")
+
+		dataFeatDir = DIO.find_date_folder(dateStr, dataDir)
+		dataFeatPath = os.path.join(dataFeatDir, "dataFeat.pkl")
+
+		if not gen_new_data:
+			try:
+				print(f"\nTrying to load {dataFeatPath}...")
+				with open(dataFeatPath, "rb") as f:
+					dataFeat = pkl.load(f)
+				print(f"Loaded dataFeat.pkl")
+				continue
+			except:
+				print(f"Could not load dataFeat.pkl...")
+				pass
+
+		dataFeat = {}
+
+		keys = sorted(list(dataDict[dateStr].keys()))
+
+		for key in keys:
+			data = dataDict[dateStr][key]['data']
+			hdr = dataDict[dateStr][key]['header']
+
+			protocol = epu.getExpProtocol(hdr)
+
+			if protocol == EPHYS_PROT_REST:
+
+				if hdr['lActualEpisodes'] > 1:
+					continue
+
+				print(f"{key}: Rest Protocol")
+
+				data = data[:, 0].squeeze()
+
+				spikeIdx, spikeVals = epo.getSpikeIdx(data,
+					dt=infoDict['data']['dt'],
+					exact=infoDict['objectives']['Spikes']['exact'])
+
+
+
+			break
 		break
 
 ################################################################################

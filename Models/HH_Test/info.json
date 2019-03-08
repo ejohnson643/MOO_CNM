@@ -54,7 +54,8 @@
 
 	"objectives":{
 		"Spikes":{
-			"exact":true
+			"exact":true,
+			"maxRate":50.0,
 		},
 		"ISI":{
 			"depol":"thirds",

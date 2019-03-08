@@ -107,6 +107,12 @@ Overall:
    		- Or any case where we just want to check that there is *any* key, not 
    		  a specific one.
 
+ - runfile_util checking objectives should check and set keywords for all
+   pertinent ephys_objs keywords.
+   	- "Spike":{}  Should be checked to have all keywords that go into
+   	  getSpikeIdx, for example.
+ - Check that infoDict['objs']['spikes']['maxRate'] == ['ISI']['maxRate']
+
 In Progress:
 ============
  - Runfile checking

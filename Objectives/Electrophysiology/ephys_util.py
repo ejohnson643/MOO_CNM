@@ -21,6 +21,7 @@
 """
 from copy import deepcopy
 import numpy as np
+from scipy.optimize import curve_fit
 
 import Utility.ABF_util as abf
 import Utility.utility as utl
@@ -193,3 +194,60 @@ def getEpochIdx(hdr):
 	"""
 
 	return abf.GetEpochIdx(hdr)[hdr['nActiveDACChannel']]
+
+################################################################################
+################################################################################
+##
+##		Fitting Routines
+##
+################################################################################
+################################################################################
+
+################################################################################
+## Fit an Exponential
+################################################################################
+def fitExp(data, times=None, returnAll=False):
+
+	## Check that data is floats and 1D
+	data = utl.force_float_arr(data).squeeze()
+
+	err_str = "(ephys_utl.fitExp): Invalid shape for input argument 'data'; "
+	err_str += f"expected 1D, got {data.shape}"
+	assert data.ndim == 1, err_str
+
+	## Set time grid on which to fit Exp
+	if times is None:
+		times = np.arange(len(data)).astype(float)
+	else:
+		times = utl.force_float_arr(times)
+
+	## Try and fit the curve!
+	try:
+		## Set initial guess based on data
+		p0 = [
+			max(-150, min(data[0], 100)),
+			max(-150, min(np.mean(data), 100)),
+			max(0, min(len(data)/10., np.inf))
+		]
+
+		## Fit the curve with some reasonable bounds
+		params, cov = curve_fit(offsetExp, times, data, p0=p0,
+			bounds=([-150, -150, 0], [100, 100, np.inf]))
+		cov = np.diag(cov)
+
+	## If something went wrong, return a really bad result
+	except:
+		params = [-150, -150, 0]
+		cov = [100, 100, 100]
+
+	## If needed, return everything
+	if returnAll:
+		return params, cov
+	else:
+		return params
+
+################################################################################
+## Offset Exponenital Function
+################################################################################
+def offsetExp(t, V0, VInf, tau):
+	return VInf + (V0-VInf)*np.exp(-t/tau)

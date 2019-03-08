@@ -1,4 +1,5 @@
 {
+
 	"modelDir":"./Models/HH_Test/",
 	"logDir":"./Logs/HH_Test/",
 	"cpDir":"./Checkpoints/HH_Test/",
@@ -55,7 +56,7 @@
 	"objectives":{
 		"Spikes":{
 			"exact":true,
-			"maxRate":50.0,
+			"maxRate":50.0
 		},
 		"ISI":{
 			"depol":"thirds",

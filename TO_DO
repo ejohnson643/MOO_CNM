@@ -43,6 +43,9 @@ March 6:
  	- Write simulation functions
  	- Write Individual visualization functions
 
+ - In ephys_objs 'dt' will be grabbed either from infoDict['data'] or
+   infoDict['simulation']
+
 
 Overall:
 ========

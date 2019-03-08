@@ -257,7 +257,7 @@ def getISI(spikeIdx, dt=0.001, minRate=0., NSpikes=1, **kwds):
 ################################################################################
 ##	Get AP Amplitude
 ################################################################################
-def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp',
+def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp', covTol=0.4,
 	returnAll=True, verbose=0, **kwds):
 
 	############################################################################
@@ -289,8 +289,10 @@ def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp',
 		err_str += f"{spikeVals.shape})."
 		assert len(spikeIdx) == len(spikeVals), err_str
 
+		## Check dt
 		dt = utl.force_pos_float(dt, name='getSpikeAmp.dt', verbose=verbose)
 
+		## Check NSpikes
 		NSpikes = utl.force_pos_int(NSpikes, name='getSpikeAmp.NSpikes',
 			verbose=verbose)
 
@@ -308,6 +310,12 @@ def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp',
 		err_str += ", ".join([f"'{f}'" for f in allowed_fits])
 		assert fit in allowed_fits, err_str
 
+		## Check covTol, which is the minimum tolerance for the coeff of var.
+		## in the exponential fit.
+		covTol = utl.force_pos_float(covTol, name='getSpikeAmp.covTol',
+			verbose=verbose)
+
+		## Check returnAll is bool
 		err_str = "(ephys_objs.getSpikeAmp): Keyword argument 'returnAll' must "
 		err_str += "be a boolean!"
 		assert isinstance(returnAll, bool), err_str
@@ -319,5 +327,154 @@ def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp',
 		spikeT = spikeIdx*dt
 
 		AmpP, AmpCov = epu.fitExp(spikeVals, times=spikeT, returnAll=True)
+
+		CoV = np.sqrt(AmpCov)/np.abs(AmpP)
+
+		if CoV[1] < covTol:
+			if returnAll:
+				return AmpP, AmpCov
+			else:
+				return AmpP
+
+	return np.mean(spikeVals)
+
+
+################################################################################
+##	Get Post-Spike Depth
+################################################################################
+def getPSD(data, spikeIdx, dt=0.001, window=None, perc=None, covTol=1.,
+	fit='exp', verbose=0, returnAll=False, **kwds):
+
+	############################################################################
+	##	Check Inputs, Keyword Arguments
+	############################################################################
+	if True:
+
+		verbose = utl.force_pos_int(verbose, name="getPSD.verbose",
+			zero_ok=True)
+
+		## Check type of data
+		data = utl.force_float_arr(data, name='getPSD.data',
+			verbose=verbose).squeeze()
+
+		## Check that data is 1D
+		err_str = "(ephys_objs.getPSD): Expected input argument 'data'"
+		err_str += f"to have 1 dimension, got shape={data.shape}"
+		assert spikeIdx.ndim == 1, err_str
+
+		## Check type of spikeIdx
+		spikeIdx = utl.force_float_arr(spikeIdx, name='getPSD.spikeIdx',
+			verbose=verbose).squeeze()
+
+		## Check that spikeIdx is 1D
+		err_str = "(ephys_objs.getPSD): Expected input argument 'spikeIdx'"
+		err_str += f"to have 1 dimension, got shape={spikeIdx.shape}"
+		assert spikeIdx.ndim == 1, err_str
+
+		## Check dt
+		dt = utl.force_pos_float(dt, name='getPSD.dt', verbose=verbose)
+
+		## Check window... 
+		## If window is given, check.
+		if window is not None:
+			window = utl.force_pos_int(window, name='getPSD.window',
+				verbose=verbose)
+		else: ## Else, use data to infer window size.
+			if len(spikeIdx) > 1: ## If there are spikes, use avg dist bt APs
+				window = int(1.5*np.mean(np.diff(spikeIdx)))
+			else: ## Else use 100th of data or 100 time points (pick larger)
+				window = max(100, int(len(data)/100.))
+
+		## Force window to be odd.
+		if (window % 2) != 0:
+			window += 1
+
+		## Check perc...
+		if perc is None:
+			perc = 10.
+		else:
+			perc = utl.force_pos_float(perc, label='getPSD.perc',
+				verbose=verbose)
+			if perc < 1:
+				perc *= 100
+
+			err_str = "(ephys_objs.getPSD): Keyword argument 'perc' must be"
+			err_str += "less than 100 (correspond to a percentage)."
+			assert perc < 100, err_str
+
+		## Check covTol, which is the minimum tolerance for the coeff of var.
+		## in the exponential fit.
+		covTol = utl.force_pos_float(covTol, name='getSpikeAmp.covTol',
+			verbose=verbose)
+
+		## Check fit
+		err_str = "(ephys_objs.getPSD): Keyword argument 'fit' must be a "
+		err_str += "string!" 
+		assert isinstance(fit, str), err_str
+
+		## Check that fit is allowed
+		allowed_fits = ['exp', 'mean']
+		err_str = "(ephys_objs.getPSD): Invalid value for keyword "
+		err_str += "argument 'fit':{fit}.  Allowed values: "
+		err_str += ", ".join([f"'{f}'" for f in allowed_fits])
+		assert fit in allowed_fits, err_str
+
+		## Check returnAll is bool
+		err_str = "(ephys_objs.getSpikeAmp): Keyword argument 'returnAll' must "
+		err_str += "be a boolean!"
+		assert isinstance(returnAll, bool), err_str
+
+	############################################################################
+	##	Compute Post-Spike Depth
+	############################################################################
+	
+	## Compute order...
+	order = int(window*perc/100.)
+
+	## Compute windowed percentile (usually 10th percentile)
+	windArr = np.ones(window+1)
+	PSDArr = sig.order_filter(data, windArr, order)
+
+	## Get windowed time array (taking half of window from each end)
+	pad = int(window/2.)
+	times = np.arange(len(data))[pad:-pad]*dt
+
+	if fit == 'exp':
+		P, cov = epu.fitExp(PDSArr, times=times, returnAll=True)
+
+		CoV = np.sqrt(cov)/np.abs(P)
+
+		if np.all(CoV <= covTol):
+			if returnAll:
+				return P, cov
+			else:
+				return P
+
+	return np.mean(PSDArr)
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

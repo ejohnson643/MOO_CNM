@@ -41,19 +41,13 @@ import pandas as pd
 import pickle as pkl
 import seaborn as sns
 
-<<<<<<< HEAD
-=======
 import Objectives.Electrophysiology.ephys_objs as epo
 import Objectives.Electrophysiology.ephys_util as epu
 
->>>>>>> aa6ba8981e9366a3b5fb6d5640c3c3a80a8de4f3
 import Utility.ABF_util as abf
 import Utility.DataIO_util as DIO
 import Utility.runfile_util as rfu
 import Utility.utility as utl
-
-<<<<<<< HEAD
-=======
 
 ################################################################################
 ##	Set Protocol ID Numbers
@@ -66,7 +60,6 @@ if True:
 	EPHYS_PROT_HYPERPOLSTEPS	= 4
 	EPHYS_PROT_CONSTHOLD		= 5
 
->>>>>>> aa6ba8981e9366a3b5fb6d5640c3c3a80a8de4f3
 ################################################################################
 ## Text Processing Functions for Loading CSV
 ################################################################################
@@ -206,6 +199,7 @@ if __name__ == "__main__":
 		keys = sorted(list(dataDict[dateStr].keys()))
 
 		for key in keys:
+
 			data = dataDict[dateStr][key]['data']
 			hdr = dataDict[dateStr][key]['header']
 
@@ -226,15 +220,26 @@ if __name__ == "__main__":
 
 				for obj in infoDict['objectives']:
 
-					subinfo = infoDict['objectives'][obj]
+					subInfo = infoDict['objectives'][obj]
+
+					## In this particular case, and when we're looking at rest
+					## protocols in general, we want to make the fits mean.
+					subInfo['fit'] = 'mean'
 
 					if obj == 'ISI':
 						err = epo.getISI(spikeIdx, dt=infoDict['data']['dt'],
-							**subinfo)
+							**subInfo)
+						print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
 
 					elif obj == 'Amp':
 						err = epo.getSpikeAmp(spikeIdx, spikeVals,
-							dt=infoDict['data']['dt'], **subinfo)
+							dt=infoDict['data']['dt'], **subInfo)
+						print(f"Amp = {err:.4g}mV")
+
+					elif obj == 'PSD':
+						err = epo.getPSD(data, spikeIdx,
+							dt=infoDict['data']['dt'], **subInfo)
+						print(f"PSD = {err:.4g}mV")
 
 
 

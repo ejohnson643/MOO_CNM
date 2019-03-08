@@ -90,29 +90,7 @@ def load_data(dataInfo, dataDir="", laptop=False, verbose=0):
 			print(warn_str)
 		return {}
 
-	## Checking that dataDir is a string
-	err_str = "Keyword argument 'dataDir' must be a string!"
-	assert isinstance(dataDir, str), err_str
-
-	## Checking that laptop is a boolean
-	err_str = "Keyword argument 'laptop' must be a boolean!"
-	assert isinstance(laptop, bool), err_str
-
-	## Check dataDir, get defaults if neeeded
-	if len(dataDir) == 0:
-		if laptop:
-			dataDir = "../RTG_Project/EA_Code/Data/"
-		else:
-			## Eventually we should move this to ./Data/
-			dataDir = "../EA_Code/Data/FlourakisData/2P/"
-
-		if verbose > 1:
-			print(f"Using default dataDir = {dataDir}")
-	elif verbose > 1:
-		print(f"Using input dataDir = {dataDir}")
-	
-	err_str = f"dataDir = {dataDir} is not a valid directory!"
-	assert os.path.isdir(dataDir), err_str
+	dataDir = get_data_dir(dataDir=dataDir, laptop=laptop, verbose=verbose)
 
 	dataDict = {}
 
@@ -159,7 +137,7 @@ def load_data_from_date(date, fileNos, dataDir, verbose=0):
 	dateTpl = parse_date(date)
 
 	## Get path to data for that date
-	datePath = find_date_folder(dateTpl, dataDir, verbose=verbose)
+	datePath = find_date_folder(dateTpl, dataDir=dataDir, verbose=verbose)
 
 	## Check that there *are* files in the datePath folder
 	err_str = f"There are no .abf files in the directory {datePath}"
@@ -194,15 +172,48 @@ def load_data_from_date(date, fileNos, dataDir, verbose=0):
 	
 	## Check that all fileNos are in this folder... If some files don't exist, 
 	## then warn, if no files match, break
-	if np.any([fNo not in data.keys() for fNo in fileNos]):
-		if verbose:
-			warn_str = "WARNING: Some requested fileNos were not loaded."
-			print(warn_str)
+	if fileNos is not None:
+		if np.any([fNo not in data.keys() for fNo in fileNos]):
+			if verbose:
+				warn_str = "WARNING: Some requested fileNos were not loaded."
+				print(warn_str)
 
 	err_str = "No data were loaded; none corresponded to fileNos = {fileNos}"
 	assert len(data) > 0, err_str
 
 	return data
+
+
+def get_data_dir(dataDir="", laptop=False, verbose=0):
+
+	## Checking that dataDir is a string
+	err_str = "Keyword argument 'dataDir' must be a string!"
+	assert isinstance(dataDir, str), err_str
+
+	## Checking that laptop is a boolean
+	err_str = "Keyword argument 'laptop' must be a boolean!"
+	assert isinstance(laptop, bool), err_str
+	
+	## Checking that verbose is a positive integer
+	verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
+
+	## Check dataDir, get defaults if neeeded
+	if len(dataDir) == 0:
+		if laptop:
+			dataDir = "../RTG_Project/EA_Code/Data/"
+		else:
+			## Eventually we should move this to ./Data/
+			dataDir = "../EA_Code/Data/FlourakisData/2P/"
+
+		if verbose > 1:
+			print(f"Using default dataDir = {dataDir}")
+	elif verbose > 1:
+		print(f"Using input dataDir = {dataDir}")
+	
+	err_str = f"dataDir = {dataDir} is not a valid directory!"
+	assert os.path.isdir(dataDir), err_str
+
+	return dataDir
 
 
 def parse_date(date):
@@ -267,7 +278,7 @@ def parse_date(date):
 	return datetime.datetime(year, month, day)
 
 
-def find_date_folder(dateTpl, dataDir, verbose=0):
+def find_date_folder(dateTpl, dataDir="", verbose=0):
 	"""find_date_folder(dateTpl, dataDir, verbose=0)
 
 	Finds folder in dataDir corresponding to dateTpl, which is a datetime tuple
@@ -283,10 +294,7 @@ def find_date_folder(dateTpl, dataDir, verbose=0):
 	err_str = "Input argument 'dateTpl' must be a datetime object"
 	assert isinstance(dateTpl, datetime.datetime), err_str
 
-	## Check that 'dataDir' is a string and a valid directory
-	err_str = "Input argument 'dataDir' must be a valid path (string)!"
-	assert isinstance(dataDir, str), err_str
-	assert os.path.isdir(dataDir), err_str
+	dataDir = get_data_dir(dataDir=dataDir, verbose=verbose)
 
 	if verbose > 1:
 		dateStr = dateTpl.strftime("%A, %B %d, %Y")

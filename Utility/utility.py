@@ -129,3 +129,23 @@ def force_pos_int(value, name=None, verbose=0, zero_ok=False):
 
 	return value
 
+
+def force_float_arr(arr, name=None, verbose=0):
+
+	if name is not None:
+		assert isinstance(name, str), "Keyword arg 'name' must be a string."
+	else:
+		name = "arr"
+
+	if verbose > 1:
+		print(f"Checking that '{name}' is np.ndarray of floats")
+
+	try:
+		arr = np.array(arr).astype(float)
+		if verbose > 1:
+			print(f"'{name}' is an array of floats!")
+	except:
+		err_str = f"'{name}' cannot be coerced into a float array."
+		raise ValueError(err_str)
+
+	return arr

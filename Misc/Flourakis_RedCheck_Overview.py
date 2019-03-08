@@ -41,11 +41,32 @@ import pandas as pd
 import pickle as pkl
 import seaborn as sns
 
+<<<<<<< HEAD
+=======
+import Objectives.Electrophysiology.ephys_objs as epo
+import Objectives.Electrophysiology.ephys_util as epu
+
+>>>>>>> aa6ba8981e9366a3b5fb6d5640c3c3a80a8de4f3
 import Utility.ABF_util as abf
 import Utility.DataIO_util as DIO
 import Utility.runfile_util as rfu
 import Utility.utility as utl
 
+<<<<<<< HEAD
+=======
+
+################################################################################
+##	Set Protocol ID Numbers
+################################################################################
+if True:
+	EPHYS_PROT_REST				= 0
+	EPHYS_PROT_DEPOLSTEP		= 1
+	EPHYS_PROT_HYPERPOLSTEP		= 2
+	EPHYS_PROT_DEPOLSTEPS		= 3
+	EPHYS_PROT_HYPERPOLSTEPS	= 4
+	EPHYS_PROT_CONSTHOLD		= 5
+
+>>>>>>> aa6ba8981e9366a3b5fb6d5640c3c3a80a8de4f3
 ################################################################################
 ## Text Processing Functions for Loading CSV
 ################################################################################
@@ -69,10 +90,12 @@ def make_float(text):
 
 def check_list(text):
 	text = strip(text)
-	if text.lower() != 'all':
-		return make_list(text)
-	else:
+	if text.lower() == 'all':
 		return [0, -1]
+	elif text.lower() == 'none':
+		return []
+	else:
+		return make_list(text)
 
 def make_list(text):
 	strip(text)
@@ -110,7 +133,7 @@ if __name__ == "__main__":
 
 	figDir = "./Figures/RedCheck_Overview/"
 
-	gen_new_data = False
+	gen_new_data = True
 	check_for_data = True
 
 	infoDir = "./Runfiles/RedCheck_Overview/"
@@ -148,16 +171,74 @@ if __name__ == "__main__":
 		if not check_for_data:
 			continue
 
-		print(f"\nLoading data from {date} ({dateNo+1}/{len(WT.index.values)})")
-
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
-		print(dateStr)
 
-		print(WT.ZT[date])
+		dateStr = "01/04/2011"
+		print(f"\nLoading data from {dateStr} ({dateNo+1}/"+
+			f"{len(WT.index.values)})")
+
+		print(f"ZT = {WT.ZT[date]:.2f}\n")
 		infoDict['data']['dates'] = {dateStr:None}
 
-		dataDict = DIO.load_data(infoDict['data'], verbose=2)
+		dataDict = DIO.load_data(infoDict['data'], verbose=0)
 
+		dataDir = DIO.get_data_dir(dataDir="")
+
+		dataFeatDir = DIO.find_date_folder(dateStr, dataDir)
+		dataFeatPath = os.path.join(dataFeatDir, "dataFeat.pkl")
+
+		if not gen_new_data:
+			try:
+				print(f"\nTrying to load {dataFeatPath}...")
+				with open(dataFeatPath, "rb") as f:
+					dataFeat = pkl.load(f)
+				print(f"Loaded dataFeat.pkl")
+				continue
+			except:
+				print(f"Could not load dataFeat.pkl...")
+				pass
+
+	############################################################################
+	## Iterate through Objectives
+	############################################################################
+		dataFeat = {}
+
+		keys = sorted(list(dataDict[dateStr].keys()))
+
+		for key in keys:
+			data = dataDict[dateStr][key]['data']
+			hdr = dataDict[dateStr][key]['header']
+
+			protocol = epu.getExpProtocol(hdr)
+
+			if protocol == EPHYS_PROT_REST:
+
+				if hdr['lActualEpisodes'] > 1:
+					continue
+
+				print(f"{key}: Rest Protocol")
+
+				data = data[:, 0].squeeze()
+
+				spikeIdx, spikeVals = epo.getSpikeIdx(data,
+					dt=infoDict['data']['dt'],
+					**infoDict['objectives']['Spikes'])
+
+				for obj in infoDict['objectives']:
+
+					subinfo = infoDict['objectives'][obj]
+
+					if obj == 'ISI':
+						err = epo.getISI(spikeIdx, dt=infoDict['data']['dt'],
+							**subinfo)
+
+					elif obj == 'Amp':
+						err = epo.getSpikeAmp(spikeIdx, spikeVals,
+							dt=infoDict['data']['dt'], **subinfo)
+
+
+
+			break
 		break
 
 ################################################################################

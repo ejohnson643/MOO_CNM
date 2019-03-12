@@ -505,16 +505,16 @@ def ABF_read(filename,
 
 	# Fix the date.
 	lDate = hdr['lFileStartDate']
-	lStartDay = lDate % 100
-	lStartMonth = (lDate % 10000)/100
-	lStartYear = lDate/10000
+	lStartDay = int(lDate % 100)
+	lStartMonth = int((lDate % 10000)/100)
+	lStartYear = int(lDate/10000)
 	if lStartYear < 1000:
 		if lStartYear < 80:
 			lStartYear += 2000
 		else:
 			lStartYear += 1900
 
-	hdr['lFileStartDate'] = lStartYear*1e5 + lStartMonth*100 + lStartDay
+	hdr['lFileStartDate'] = int(lStartYear*1e4 + lStartMonth*100 + lStartDay)
 
 	# If we only want the header, then return here.
 	if onlyInfo:
@@ -1090,9 +1090,9 @@ def readEDFixLenMode(rawdata, hdr):
 	hdr['sweepStartsinPts'] = synchArr[:, 0]*timefactor
 
 	# Get the recording start and stop times in seconds from midnight
-	hdr['recTime'] = hdr['lFileStartTime']
-	hdr['recTime'] = (np.array([0] + 1.e-6*(hdr['sweepStartsinPts'])) +
-		hdr['fADCSampleInterval']*synchArr[0, 1] + hdr['recTime'])
+	hdr['recTime'] = hdr['sweepStartsinPts'][-1] + hdr['sweepLengthInPts']
+	hdr['recTime'] *= hdr['fADCSampleInterval']*hdr['nADCNumChannels']*1.e-6
+	hdr['recTime'] = np.array([0] + [hdr['recTime']]) + hdr['lFileStartTime']
 
 	# Determine the start and end points of the data to be read.
 	startPt = 0

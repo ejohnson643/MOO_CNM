@@ -258,7 +258,7 @@ def getISI(spikeIdx, dt=0.001, minRate=0., NSpikes=1, **kwds):
 ##	Get AP Amplitude
 ################################################################################
 def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp', covTol=0.4,
-	returnAll=True, verbose=0, **kwds):
+	returnAll=False, verbose=0, **kwds):
 
 	############################################################################
 	##	Check Inputs, Keyword Arguments
@@ -327,14 +327,22 @@ def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp', covTol=0.4,
 		spikeT = spikeIdx*dt
 
 		AmpP, AmpCov = epu.fitExp(spikeVals, times=spikeT, returnAll=True)
+		AmpP[AmpP == 0] = 1.e-16
 
 		CoV = np.sqrt(AmpCov)/np.abs(AmpP)
 
 		if CoV[1] < covTol:
+			if verbose > 1:
+				print(f"(epu.getSpikeAmp): Exponential fit was good! "+
+					f"(CoV <= {covTol:.3g})")
+
 			if returnAll:
 				return AmpP, AmpCov
 			else:
 				return AmpP
+
+	if verbose > 1:
+		print("(epu.getSpikeAmp): Using mean fit!")
 
 	return np.mean(spikeVals)
 
@@ -366,10 +374,14 @@ def getPSD(data, spikeIdx, dt=0.001, window=None, perc=None, covTol=1.,
 		spikeIdx = utl.force_float_arr(spikeIdx, name='getPSD.spikeIdx',
 			verbose=verbose).squeeze()
 
+		if spikeIdx.shape == ():
+			spikeIdx = spikeIdx.reshape(-1)
+
 		## Check that spikeIdx is 1D
 		err_str = "(ephys_objs.getPSD): Expected input argument 'spikeIdx'"
 		err_str += f"to have 1 dimension, got shape={spikeIdx.shape}"
 		assert spikeIdx.ndim == 1, err_str
+
 
 		## Check dt
 		dt = utl.force_pos_float(dt, name='getPSD.dt', verbose=verbose)
@@ -440,15 +452,24 @@ def getPSD(data, spikeIdx, dt=0.001, window=None, perc=None, covTol=1.,
 	times = np.arange(len(data))[pad:-pad]*dt
 
 	if fit == 'exp':
-		P, cov = epu.fitExp(PDSArr, times=times, returnAll=True)
+		P, cov = epu.fitExp(PSDArr, times=times, returnAll=True)
+		P[P == 0] = 1.e-16
 
 		CoV = np.sqrt(cov)/np.abs(P)
 
 		if np.all(CoV <= covTol):
+
+			if verbose > 1:
+				print(f"(epo.getPSD): Exponential fit was good! " +
+					f"(CoV <= {covTol:.3g})")
+
 			if returnAll:
 				return P, cov
 			else:
 				return P
+
+	if verbose > 1:
+		print("(epu.getPSD): Using mean fit!")
 
 	return np.mean(PSDArr)
 

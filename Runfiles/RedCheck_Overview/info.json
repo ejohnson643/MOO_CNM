@@ -8,20 +8,16 @@
 			"exact":true
 		},
 		"ISI":{
-			"depol":"thirds",
-			"kwds":{}
+			"depol":"thirds"
 		},
 		"Amp":{
-			"fit":"exp",
-			"kwds":{}
+			"fit":"exp"
 		},
 		"PSD":{
-			"fit":"exp",
-			"kwds":{}
+			"fit":"exp"
 		},
 		"RI":{
-			"type":"RI",
-			"kwds":{}
+			"type":"RI"
 		}
 	},
 

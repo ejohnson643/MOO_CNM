@@ -166,11 +166,16 @@ if __name__ == "__main__":
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
 
-		dateStr = "01/04/2011"
+		# dateStr = "01/04/2011"
+		dateStr = "24/10/2012"
 		print(f"\nLoading data from {dateStr} ({dateNo+1}/"+
 			f"{len(WT.index.values)})")
 
-		print(f"ZT = {WT.ZT[date]:.2f}\n")
+		try:
+			print(f"ZT = {WT.ZT[date]:.2f}\n")
+		except:
+			for ZT in WT.ZT[date]:
+				print(f"ZT = {ZT:.2f}\n")
 		infoDict['data']['dates'] = {dateStr:None}
 
 		dataDict = DIO.load_data(infoDict['data'], verbose=0)
@@ -198,6 +203,8 @@ if __name__ == "__main__":
 
 		keys = sorted(list(dataDict[dateStr].keys()))
 
+		prots = []
+
 		for key in keys:
 
 			data = dataDict[dateStr][key]['data']
@@ -205,46 +212,78 @@ if __name__ == "__main__":
 
 			protocol = epu.getExpProtocol(hdr)
 
+			prots.append([key, protocol])
+
+			print(f"{key}: {protocol}")
+
+		########################################################################
+		## Rest Protocol
+		########################################################################
 			if protocol == EPHYS_PROT_REST:
 
 				if hdr['lActualEpisodes'] > 1:
+					print(f"WARNING: Many ({hdr['lActualEpisodes']}) episodes."+
+						".. skipping!")
 					continue
 
-				print(f"{key}: Rest Protocol")
+				dataFeat = epu.getRestFeatures(data, hdr, infoDict, dataFeat,
+					key=key, verbose=2)
 
-				data = data[:, 0].squeeze()
+		########################################################################
+		## Depolarization Step Protocol
+		########################################################################
+			elif protocol == EPHYS_PROT_DEPOLSTEP:
 
-				spikeIdx, spikeVals = epo.getSpikeIdx(data,
-					dt=infoDict['data']['dt'],
-					**infoDict['objectives']['Spikes'])
+				# print(f"{key}: Depolarization Step Protocol")
 
-				for obj in infoDict['objectives']:
+				dataFeat = epu.getDepolFeatures(data, hdr, infoDict, dataFeat,
+					key=key, verbose=2)
 
-					subInfo = infoDict['objectives'][obj]
+		########################################################################
+		## Hyperpolarization Step Protocol
+		########################################################################
+			elif protocol == EPHYS_PROT_HYPERPOLSTEP:
 
-					## In this particular case, and when we're looking at rest
-					## protocols in general, we want to make the fits mean.
-					subInfo['fit'] = 'mean'
+				# print(f"{key}: Hyperpolarization Step Protocol")
 
-					if obj == 'ISI':
-						err = epo.getISI(spikeIdx, dt=infoDict['data']['dt'],
-							**subInfo)
-						print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+				dataFeat = epu.getHyperpolFeatures(data, hdr, infoDict,
+					dataFeat, key=key, verbose=2)
 
-					elif obj == 'Amp':
-						err = epo.getSpikeAmp(spikeIdx, spikeVals,
-							dt=infoDict['data']['dt'], **subInfo)
-						print(f"Amp = {err:.4g}mV")
+		########################################################################
+		## Hyperpolarization Step Protocol
+		########################################################################
+			elif protocol == EPHYS_PROT_DEPOLSTEPS:
 
-					elif obj == 'PSD':
-						err = epo.getPSD(data, spikeIdx,
-							dt=infoDict['data']['dt'], **subInfo)
-						print(f"PSD = {err:.4g}mV")
+				# print(f"{key}: Depolarization Steps Protocol")
+				dataFeat = epu.getDepolStepsFeatures(data, hdr, infoDict,
+					dataFeat, key=key, verbose=2)
 
+		########################################################################
+		## Hyperpolarization Step Protocol
+		########################################################################
+			elif protocol == EPHYS_PROT_HYPERPOLSTEPS:
 
+				# print(f"{key}: Hyperpolarization Steps Protocol")
+				pass
 
-			break
+		########################################################################
+		## Hyperpolarization Step Protocol
+		########################################################################
+			elif protocol == EPHYS_PROT_CONSTHOLD:
+
+				# print(f"{key}: Constant Holding Current Protocol")
+				pass
+
+		########################################################################
+		## Hyperpolarization Step Protocol
+		########################################################################
+			else:
+				# print(f"{key}: UNKNOWN PROTOCOL")
+				pass
+
 		break
+
+		print("\n".join([", ".join([f"{p}" for p in pline]) for pline in prots]))
 
 ################################################################################
 ## Show plots!

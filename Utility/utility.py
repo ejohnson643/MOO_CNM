@@ -39,12 +39,12 @@ def force_string(value, name=None, verbose=0):
 
 def is_floatable(value, name=None, verbose=0):
 
-	if (name is not None) and (verbose > 1):
+	if (name is not None) and (verbose > 5):
 		print(f"Checking if {name} = {value} is floatable...")
 
 	try:
 		_ = float(value)
-		if verbose > 1:
+		if verbose > 5:
 			if name is not None:
 				print(f"{name} = {value} is floatable!")
 			else:
@@ -52,7 +52,7 @@ def is_floatable(value, name=None, verbose=0):
 		return True
 
 	except ValueError:
-		if verbose > 1:
+		if verbose > 5:
 			if name is not None:
 				print(f"{name} = {value} is not floatable!")
 			else:
@@ -68,7 +68,7 @@ def force_float(value, name=None, verbose=0):
 		err_str = f"var = {value} is not floatable!"
 	assert is_floatable(value, name=name, verbose=verbose), err_str
 
-	if verbose > 1:
+	if verbose > 5:
 		if name is not None:
 			print_str = f"Setting {name} = {value} to float!"
 		else:
@@ -103,7 +103,7 @@ def force_int(value, name=None, verbose=0):
 		err_str = f"var = {value} is not floatable!"
 	assert is_floatable(value, name=name, verbose=verbose), err_str
 
-	if verbose > 1:
+	if verbose > 5:
 		if name is not None:
 			print_str = f"Setting {name} = {value} to int!"
 		else:
@@ -137,12 +137,12 @@ def force_float_arr(arr, name=None, verbose=0):
 	else:
 		name = "arr"
 
-	if verbose > 1:
+	if verbose > 5:
 		print(f"Checking that '{name}' is np.ndarray of floats")
 
 	try:
 		arr = np.array(arr).astype(float)
-		if verbose > 1:
+		if verbose > 5:
 			print(f"'{name}' is an array of floats!")
 	except:
 		err_str = f"'{name}' cannot be coerced into a float array."

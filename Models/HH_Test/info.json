@@ -60,25 +60,22 @@
 		},
 		"ISI":{
 			"depol":"thirds",
-			"maxRate":50.0,
-			"kwds":{}
+			"maxRate":50.0
 		},
 		"Amp":{
 			"fit":"exp",
-			"kwds":{"verbose":2}
+			"verbose":0
 		},
 		"PSD":{
 			"fit":"exp",
-			"kwds":{}
+			"verbose":0
 		},
 		"RI":{
-			"type":"RI",
-			"kwds":{}
+			"type":"RI"
 		},
 		"kDist":{
 			"type":"rest",
-			"sigma":[2, 10],
-			"kwds":{}
+			"sigma":[2, 10]
 		}
 	},
 

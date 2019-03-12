@@ -23,6 +23,8 @@ from copy import deepcopy
 import numpy as np
 from scipy.optimize import curve_fit
 
+import Objectives.Electrophysiology.ephys_objs as epo
+
 import Utility.ABF_util as abf
 import Utility.utility as utl
 
@@ -36,6 +38,7 @@ if True:
 	EPHYS_PROT_DEPOLSTEPS		= 3
 	EPHYS_PROT_HYPERPOLSTEPS	= 4
 	EPHYS_PROT_CONSTHOLD		= 5
+
 
 ################################################################################
 ################################################################################
@@ -138,7 +141,7 @@ def getExpProtocol(hdr, useList=True):
 			nonZeroLev = epochLevs[(epochLevs != holdCurr).nonzero()]
 
 			## If it's positive, it's a depol step(s)
-			if nonZeroLev > 0:
+			if nonZeroLev > holdCurr:
 				if hdr['lActualEpisodes'] > 1:
 					return EPHYS_PROT_DEPOLSTEPS
 				else:
@@ -195,6 +198,587 @@ def getEpochIdx(hdr):
 
 	return abf.GetEpochIdx(hdr)[hdr['nActiveDACChannel']]
 
+
+################################################################################
+################################################################################
+##
+##		Electrophysiology Feature Extraction Methods
+##
+################################################################################
+################################################################################
+
+################################################################################
+## Get Electrophysiology Features
+################################################################################
+def getEphysFeatures(dataDict, infoDict, verbose=None):
+
+	if verbose is not None:
+		try:
+			verbose = utl.force_pos_int(verbose,
+				name='epu.getEphysFeatures.verbose', zero_ok=True)
+		except:
+			verbose = 0
+	else:
+		try:
+			verbose = infoDict['objectives']['verbose']
+		except:
+			verbose = 0
+
+	if verbose:
+		print_str = "\nExtracting Electrophysiology Features from Data\n"
+		print(print_str + (len(print_str)+1)*"=")
+
+	dataFeat = {}
+
+	keys = sorted(list(dataDict.keys()))
+
+	for key in keys:
+		data = dataDict[key]['data']
+		hdr = dataDict[key]['header']
+
+		protocol = getExpProtocol(hdr)
+
+		if protocol == EPHYS_PROT_REST:
+			dataFeat = getRestFeatures(data, hdr, infoDict, dataFeat, key=key,
+				verbose=verbose)
+
+		elif protocol == EPHYS_PROT_DEPOLSTEP:
+			dataFeat = getDepolFeatures(data, hdr, infoDict, dataFeat, key=key,
+				verbose=verbose)
+
+		elif protocol == EPHYS_PROT_HYPERPOLSTEP:
+			dataFeat = getHyperpolFeatures(data, hdr, infoDict, dataFeat,
+				key=key, verbose=verbose)
+
+		elif protocol == EPHYS_PROT_DEPOLSTEPS:
+			dataFeat = getDepolStepsFeatures(data, hdr, infoDict, dataFeat,
+				key=key, verbose=verbose)
+
+		elif protocol == EPHYS_PROT_HYPERPOLSTEPS:
+			dataFeat = getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat,
+				key=key, verbose=verbose)
+
+		elif protocol == EPHYS_PROT_CONSTHOLD:
+			dataFeat = getConstHoldFeatures(data, hdr, infoDict, dataFeat,
+				key=key, verbose=verbose)
+
+		else:
+			if verbose > 1:
+				print_str = f"Unknown protocol = {protocol}, cannot extract "
+				print(print_str + "features!")
+			continue
+
+	return dataFeat
+
+
+################################################################################
+## Get Electrophysiology Features from Rest Protocol
+################################################################################
+def getRestFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
+
+	verbose = utl.force_pos_int(verbose, name='epu.getRestFeatures.verbose',
+		zero_ok=True)
+
+	if verbose > 1:
+		print("Getting features from REST PROTOCOL")
+
+	data = data[:, 0].squeeze()
+
+	spikeIdx, spikeVals = epo.getSpikeIdx(data, dt=infoDict['data']['dt'],
+		**infoDict['objectives']['Spikes'])
+
+	for obj in infoDict['objectives']:
+
+		subInfo = infoDict['objectives'][obj]
+
+		## For rest protocols, only want mean fit.
+		subInfo['fit'] = 'mean'
+
+		if obj == 'ISI':
+			err = epo.getISI(spikeIdx, dt=infoDict['data']['dt'],
+				**subInfo)
+
+			if verbose > 2:
+				print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+
+		elif obj == 'Amp':
+			err = epo.getSpikeAmp(spikeIdx, spikeVals,
+				dt=infoDict['data']['dt'], **subInfo)
+
+			if verbose > 2:
+				print(f"Amp = {err:.4g}mV")
+
+		elif obj == 'PSD':
+			err = epo.getPSD(data, spikeIdx,
+				dt=infoDict['data']['dt'], **subInfo)
+
+			if verbose > 2:
+				print(f"PSD = {err:.4g}mV")
+
+		else:
+			continue
+
+		try:
+			_ = dataFeat[obj]
+		except KeyError:
+			dataFeat[obj] = {}
+
+		try:
+			_ = dataFeat[obj]['rest']
+		except KeyError:
+			dataFeat[obj]['rest'] = {}
+
+		if key is not None:
+			key = utl.force_pos_int(key, name='epu.getRestFeatures.key',
+				zero_ok=True, verbose=verbose)
+		else:
+			key = list(out[obj]['rest'].keys()).sort().pop() + 1
+
+		dataFeat[obj]['rest'][key] = deepcopy(err)
+
+	return dataFeat.copy()
+
+
+################################################################################
+## Get Electrophysiology Features from Depolarization Step Protocol
+################################################################################
+def getDepolFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
+
+	verbose = utl.force_pos_int(verbose, name='epu.getDepolFeatures.verbose',
+		zero_ok=True)
+
+	if verbose > 1:
+		print("Getting features from DEPOL STEP PROTOCOL")
+
+	dt = deepcopy(infoDict['data']['dt'])
+
+	data = data[:, 0].squeeze()
+
+	dpData, dpIdx, dpI = getDepolIdx(data, hdr, protocol=EPHYS_PROT_DEPOLSTEP)
+
+	tGrid = abf.GetTimebase(hdr, 0)[dpIdx[0]:dpIdx[1]]*dt
+
+	spikeIdx, spikeVals = epo.getSpikeIdx(dpData, dt=dt,
+		**infoDict['objectives']['Spikes'])
+
+	for obj in infoDict['objectives']:
+
+		subInfo = infoDict['objectives'][obj]
+
+		if obj == "ISI":
+			if len(spikeIdx) == 0:
+				continue
+
+			if subInfo['depol'] in ['thirds', 'lastthird']:
+				bounds = np.linspace(0, len(tGrid), 4).astype(int)
+
+				err = []
+
+				first = spikeIdx[spikeIdx < bounds[1]]
+				err.append(epo.getISI(first, dt=dt, **subInfo))
+
+				last = spikeIdx[spikeIdx >= bounds[2]]
+				err.append(epo.getISI(last, dt=dt, **subInfo))
+
+				if subInfo['depol'] == 'lastthird':
+					err = err[-1]
+
+					if verbose > 2:
+						print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+
+				else:
+					if verbose > 2:
+						for e in err:
+							print(f"ISI = {e:.4g}ms (FR = {1/e:.4g}Hz)")
+
+			else:
+				err = epo.getISI(spikeIdx, dt=dt, **subInfo)
+
+		elif obj == 'Amp':
+			err = epo.getSpikeAmp(spikeIdx, spikeVals, **subInfo)
+
+			if not isinstance(err, float):
+				err = err[1]
+
+			if verbose > 2:
+				print(f"Amp = {err:.4g}mV")
+
+		elif obj == 'PSD':
+			err = epo.getPSD(data, spikeIdx, dt=dt, **subInfo)
+
+			if not isinstance(err, float):
+				err = err[1]
+
+			if verbose > 2:
+				print(f"PSD = {err:.4g}mV")
+
+		else:
+			continue
+
+		try:
+			_ = dataFeat[obj]
+		except KeyError:
+			dataFeat[obj] = {}
+
+		try:
+			_ = dataFeat[obj]['depol']
+		except KeyError:
+			dataFeat[obj]['depol'] = {}
+
+		if key is not None:
+			key = utl.force_pos_int(key, name='epu.getDepolFeatures.key',
+				zero_ok=True, verbose=verbose)
+		else:
+			key = list(out[obj]['depol'].keys()).sort().pop() + 1
+
+		dataFeat[obj]['depol'][key] = deepcopy(err)
+
+	return dataFeat.copy()
+
+
+################################################################################
+## Get Electrophysiology Features from Hyperpolarization Step Protocol
+################################################################################
+def getHyperpolFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
+
+	verbose = utl.force_pos_int(verbose, name='epu.getHyperpolFeatures.verbose',
+		zero_ok=True)
+
+	if verbose > 1:
+		print("Getting features from HYPERPOL STEP PROTOCOL")
+
+	dt = deepcopy(infoDict['data']['dt'])
+
+	data = data[:, 0].squeeze()
+
+	hpData, hpIdx, hpI = getHyperpolIdx(data, hdr,
+		protocol=EPHYS_PROT_HYPERPOLSTEP)
+
+	spikeIdx, spikeVals = epo.getSpikeIdx(hpData, dt=dt,
+		**infoDict['objectives']['Spikes'])
+
+	for obj in infoDict['objectives']:
+
+		subInfo = infoDict['objectives'][obj]
+
+		if obj == 'PSD':
+			err = epo.getPSD(data, spikeIdx, dt=dt, **subInfo)
+
+			if not isinstance(err, float):
+				err = err[1]
+
+			if verbose > 2:
+				print(f"PSD = {err:.4g}mV")
+
+		else:
+			continue
+
+		try:
+			_ = dataFeat[obj]
+		except KeyError:
+			dataFeat[obj] = {}
+
+		try:
+			_ = dataFeat[obj]['hyperpol']
+		except KeyError:
+			dataFeat[obj]['hyperpol'] = {}
+
+		if key is not None:
+			key = utl.force_pos_int(key, name='epu.getHyperpolFeatures.key',
+				zero_ok=True, verbose=verbose)
+		else:
+			key = list(out[obj]['hyperpol'].keys()).sort().pop() + 1
+
+		dataFeat[obj]['hyperpol'][key] = deepcopy(err)
+
+	return dataFeat.copy()
+
+
+################################################################################
+## Get Electrophysiology Features from Depolarization Steps Protocol
+################################################################################
+def getDepolStepsFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
+
+	verbose = utl.force_pos_int(verbose,
+		name='epu.getDepolStepsFeatures.verbose', zero_ok=True)
+
+	if verbose > 1:
+		print("Getting features from DEPOL STEPS PROTOCOL")
+
+	dt = deepcopy(infoDict['data']['dt'])
+
+	return dataFeat
+
+
+################################################################################
+## Get Electrophysiology Features from Hyperpolarization Steps Protocol
+################################################################################
+def getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat, key=None,
+	verbose=0):
+	return dataFeat
+
+
+################################################################################
+## Get Electrophysiology Features from Constant Holding Protocol
+################################################################################
+def getConstHoldFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
+	return dataFeat
+
+
+################################################################################
+################################################################################
+##
+##		Electrophysiology Data Processing Methods
+##
+################################################################################
+################################################################################
+
+
+################################################################################
+## Get Indices, Current of Depolarization Step
+################################################################################
+def getDepolIdx(data, hdr, protocol=None, verbose=0):
+	"""getDepolIdx(data, hdr, protocol=None):
+
+	Get the section of data, indices, and input current corresponding to a
+	depolarization step(s) protocol.
+
+	INPUTS:
+	=======
+	data 		(ndarray)		Array containing ephys data to be parsed.
+
+	hdr 		(dict)			Header dictionary corresponding to data.
+
+	protocol 	(int)			(Default: None) integer key indicating the 
+								experimental protocol used to generate data.
+								Will be inferred from header if not indicated.
+
+	verbose 	(int)			(Default: 0) Flag for verbosity of method.
+								Default is lowest verbosity.
+
+	OUTPUTS:
+	=========
+	data 		(ndarray)		Truncated data array corresponding to depol 
+								step(s) region.
+
+	dpIdx 		(tuple)			Tuple of indices indicating where in the data
+								array the depol step(s) begin and end.
+
+	dpI 		(float, list)	Input current of depol step(s).  If multiple
+								steps, gives list of currents.
+	"""
+
+	verbose = utl.force_pos_int(verbose, name='epu.getDepolIdx.verbose',
+		zero_ok=True)
+
+	if protocol is None:
+		protocol = getExpProtocol(hdr)
+	else:
+		protocol = utl.force_int(protocol, name='epu.getHyperpolIdx.verbose',
+			verbose=verbose)
+
+	epochIdx = getEpochIdx(hdr)[0]
+
+	uDACChan = hdr['nActiveDACChannel']
+
+	## If not known protocol, raise error
+	if protocol < 0:
+		err_str = f"Invalid value for keyword 'protocol'... {protocol} "
+		err_str += "is not a known ephys protocol."
+		raise ValueError(err_str)
+
+	elif protocol == EPHYS_PROT_DEPOLSTEP:
+		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
+
+
+		epochLevs = hdr['fEpochInitLevel'][uDACChan]
+		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+		if len(np.unique(epochLevs)) == 2:
+			dpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
+
+			dpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+
+		else:
+			epochIncs = hdr['fEpochLevelInc'][uDACChan]
+			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+			dpEpchIdx = (epochIdx).nonzero()[0]
+
+			dpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+			dpI += hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+
+		startIdx = int(epochIdx[dpEpchIdx+1])
+		endIdx = int(epochIdx[dpEpchIdx+2])
+		dpIdx = (startIdx, endIdx)
+
+		data = data[startIdx:endIdx]
+
+		return data, dpIdx, dpI
+
+
+	elif protocol == EPHYS_PROT_DEPOLSTEPS:
+
+		err_str = f"Input argument 'data' must have 2 dims, got {data.ndim}."
+		assert data.ndim == 2, err_str
+
+		epochLevs = hdr['fEpochInitLevel'][uDACChan]
+		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+		if len(np.unique(epochLevs)) == 2:
+			dpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
+
+		else:
+			epochIncs = hdr['fEpochLevelInc'][uDACChan]
+			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+			dpEpchIdx = (epochIdx).nonzero()[0]
+
+		startIdx = int(epochIdx[dpEpchIdx+1])
+		endIdx = int(epochIdx[dpEpchIdx+2])
+		dpIdx = (startIdx, endIdx)
+
+		data = data[startIdx:endIdx]
+
+		dpI = []
+		for epNo in range(hdr['lActualEpisodes']):
+
+			tmpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+			tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+
+			dpI.append(tmpI)
+
+		return data, dpIdx, np.array(dpI)
+
+	else:
+		err_str = f"Invalid value for keyword 'protocol'... Protocol={protocol}"
+		err_str += " is not allowed (only expect depol step(s))."
+		raise ValueError(err_str)
+
+
+################################################################################
+## Get Indices, Current of Hyperpolarization Step
+################################################################################
+def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
+	"""getHyperpolIdx(data, hdr, protocol=None):
+
+	Get the section of data, indices, and input current corresponding to a
+	hyperpolarization step(s) protocol.
+
+	INPUTS:
+	=======
+	data 		(ndarray)		Array containing ephys data to be parsed.
+
+	hdr 		(dict)			Header dictionary corresponding to data.
+
+	protocol 	(int)			(Default: None) integer key indicating the 
+								experimental protocol used to generate data.
+								Will be inferred from header if not indicated.
+
+	verbose 	(int)			(Default: 0) Flag for verbosity of method.
+								Default is lowest verbosity.
+
+	OUTPUTS:
+	=========
+	data 		(ndarray)		Truncated data array corresponding to hyperpol 
+								step(s) region.
+
+	hpIdx 		(tuple)			Tuple of indices indicating where in the data
+								array the hyperpol step(s) begin and end.
+
+	hpI 		(float, list)	Input current of hyperpol step(s).  If multiple
+								steps, gives list of currents.
+	"""
+
+	verbose = utl.force_pos_int(verbose, name='epu.getHyperpolIdx.verbose',
+		zero_ok=True)
+
+	if protocol is None:
+		protocol = getExpProtocol(hdr)
+	else:
+		protocol = utl.force_int(protocol, name='epu.getHyperpolIdx.verbose',
+			verbose=verbose)
+
+	print(protocol)
+
+	epochIdx = getEpochIdx(hdr)[0]
+
+	uDACChan = hdr['nActiveDACChannel']
+
+	## If not known protocol, raise error
+	if protocol < 0:
+		err_str = f"Invalid value for keyword 'protocol'... {protocol} "
+		err_str += "is not a known ephys protocol."
+		raise ValueError(err_str)
+
+	elif protocol == EPHYS_PROT_HYPERPOLSTEP:
+		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
+
+		epochLevs = hdr['fEpochInitLevel'][uDACChan]
+		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+		if len(np.unique(epochLevs)) == 2:
+			dpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
+
+			dpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+
+		else:
+			epochIncs = hdr['fEpochLevelInc'][uDACChan]
+			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+			dpEpchIdx = (epochIdx).nonzero()[0]
+
+			dpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+			dpI += hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+
+		startIdx = int(epochIdx[dpEpchIdx+1])
+		endIdx = int(epochIdx[dpEpchIdx+2])
+		dpIdx = (startIdx, endIdx)
+
+		data = data[startIdx:endIdx]
+
+		return data, dpIdx, dpI
+
+
+	elif protocol == EPHYS_PROT_HYPERPOLSTEPS:
+
+		err_str = f"Input argument 'data' must have 2 dims, got {data.ndim}."
+		assert data.ndim == 2, err_str
+
+		epochLevs = hdr['fEpochInitLevel'][uDACChan]
+		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+		if len(np.unique(epochLevs)) == 2:
+			dpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
+
+		else:
+			epochIncs = hdr['fEpochLevelInc'][uDACChan]
+			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
+
+			dpEpchIdx = (epochIdx).nonzero()[0]
+
+		startIdx = int(epochIdx[dpEpchIdx+1])
+		endIdx = int(epochIdx[dpEpchIdx+2])
+		dpIdx = (startIdx, endIdx)
+
+		data = data[startIdx:endIdx]
+
+		dpI = []
+		for epNo in range(hdr['lActualEpisodes']):
+
+			tmpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+			tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+
+			dpI.append(tmpI)
+
+		return data, dpIdx, np.array(dpI)
+
+	else:
+		err_str = f"Invalid value for keyword 'protocol'... Protocol={protocol}"
+		err_str += " is not allowed (only expect depol step(s))."
+		raise ValueError(err_str)
+
+
 ################################################################################
 ################################################################################
 ##
@@ -202,6 +786,7 @@ def getEpochIdx(hdr):
 ##
 ################################################################################
 ################################################################################
+
 
 ################################################################################
 ## Fit an Exponential
@@ -242,9 +827,10 @@ def fitExp(data, times=None, returnAll=False):
 
 	## If needed, return everything
 	if returnAll:
-		return params, cov
+		return np.array(params), np.array(cov)
 	else:
-		return params
+		return np.array(params)
+
 
 ################################################################################
 ## Offset Exponenital Function

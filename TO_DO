@@ -115,6 +115,7 @@ Overall:
    	- "Spike":{}  Should be checked to have all keywords that go into
    	  getSpikeIdx, for example.
  - Check that infoDict['objs']['spikes']['maxRate'] == ['ISI']['maxRate']
+ - Eliminate 'kwds' field from objectives.  Just use **iDict[objs][obj].
 
 In Progress:
 ============

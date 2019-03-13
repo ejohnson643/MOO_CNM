@@ -274,6 +274,15 @@ def getSpikeAmp(spikeIdx, spikeVals, dt=0.001, NSpikes=1, fit='exp', covTol=0.4,
 		spikeVals = utl.force_float_arr(spikeVals, name='getSpikeAmp.spikeVals',
 			verbose=verbose).squeeze()
 
+		if spikeIdx.shape == ():
+			spikeIdx = spikeIdx.reshape(-1)
+
+		if spikeVals.shape == ():
+			spikeVals = spikeVals.reshape(-1)
+
+		if len(spikeIdx) == 0:
+			return np.NaN
+
 		## Check that spikeIdx and spikeVals are 1D arrays
 		err_str = "(ephys_objs.getSpikeAmp): Expected input argument 'spikeIdx'"
 		err_str += f"to have 1 dimension, got shape={spikeIdx.shape}"
@@ -368,7 +377,7 @@ def getPSD(data, spikeIdx, dt=0.001, window=None, perc=None, covTol=1.,
 		## Check that data is 1D
 		err_str = "(ephys_objs.getPSD): Expected input argument 'data'"
 		err_str += f"to have 1 dimension, got shape={data.shape}"
-		assert spikeIdx.ndim == 1, err_str
+		assert data.ndim == 1, err_str
 
 		## Check type of spikeIdx
 		spikeIdx = utl.force_float_arr(spikeIdx, name='getPSD.spikeIdx',
@@ -378,10 +387,10 @@ def getPSD(data, spikeIdx, dt=0.001, window=None, perc=None, covTol=1.,
 			spikeIdx = spikeIdx.reshape(-1)
 
 		## Check that spikeIdx is 1D
-		err_str = "(ephys_objs.getPSD): Expected input argument 'spikeIdx'"
-		err_str += f"to have 1 dimension, got shape={spikeIdx.shape}"
-		assert spikeIdx.ndim == 1, err_str
-
+		if len(spikeIdx) > 0:
+			err_str = "(ephys_objs.getPSD): Expected input argument 'spikeIdx'"
+			err_str += f"to have 1 dimension, got shape={spikeIdx.shape}"
+			assert spikeIdx.ndim == 1, err_str
 
 		## Check dt
 		dt = utl.force_pos_float(dt, name='getPSD.dt', verbose=verbose)
@@ -468,10 +477,394 @@ def getPSD(data, spikeIdx, dt=0.001, window=None, perc=None, covTol=1.,
 			else:
 				return P
 
+		else:
+			if verbose > 2:
+				print(f"(epo.getPSD): Exponential fit was not good!" +
+					f"(CoV = {CoV})")
+
 	if verbose > 1:
 		print("(epu.getPSD): Using mean fit!")
 
 	return np.mean(PSDArr)
+
+
+################################################################################
+##	Get F-I Slope
+################################################################################
+def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
+
+	## Check that the objDict is the 'objectives' field from an infoDict
+	err_str = "Input argument 'epo.getFISlope.objDict' must be a dictionary!"
+	assert isinstance(objDict, dict), err_str
+
+	try:
+		verbose = objDict['FI']['verbose']
+	except:
+		verbose = 0
+	objDict['FI']['verbose'] = verbose
+
+	verbose = utl.force_pos_int(verbose, name='epo.getFISlope.verbose',
+		zero_ok=True)
+
+	## Check dt
+	dt = utl.force_pos_float(dt, name='epo.getFISlope.dt', verbose=verbose)
+
+	## If a feature dictionary is provided, extract the F-I slope from that.
+	## (This method assumes that protocol==DEPOLSTEPS!)
+	if (featDict is not None) and (isinstance(featDict, dict)):
+		if verbose > 1:
+			print("Extracting F-I Slope from Feature Dictionary!")
+		return getFISlope_from_Dict(featDict, dt=dt, **objDict['FI'])
+
+	if verbose > 1:
+		print("Calculating F-I Slope from Data!")
+
+	## Check that data is the right type and shape
+	err_str = "Input argument 'data' must be 2D array of data."
+	data = utl.force_float_arr(data, name='epo.getFISlope.data',
+		verbose=verbose).squeeze()
+	assert data.ndim == 2, err_str
+
+	## Check that IArr is the right type
+	IArr = utl.force_float_arr(IArr, name='epo.getFISlope.IArr',
+		verbose=verbose).squeeze()
+
+	## Iterate through the episodes... Assumes dpData is N x NEps shape
+	FArr = []
+	for ii, D in enumerate(data.T):
+		if verbose > 2:
+			print(f"Extracting ISI from episode {ii}!")
+
+		ISIInfo = objDict["ISI"]
+
+		spikeIdx, spikeVals = getSpikeIdx(D, dt=dt, **objDict['Spikes'])
+
+		if ISIInfo['depol'] in ['thirds', 'lastthird']:
+			bounds = np.linspace(0, len(D), 4).astype(int)
+
+			err = []
+
+			first = spikeIdx[spikeIdx < bounds[1]]
+			err.append(getISI(first, dt=dt, **ISIInfo))
+
+			last = spikeIdx[spikeIdx >= bounds[2]]
+			err.append(getISI(last, dt=dt, **ISIInfo))
+
+			if ISIInfo['depol'] == 'lastthird':
+				err = err[-1]
+
+				if verbose > 3:
+					print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+
+			else:
+				if verbose > 3:
+					for e in err:
+						print(f"ISI = {e:.4g}ms (FR = {1/e:.4g}Hz)")
+
+		else:
+			err = getISI(spikeIdx, dt=dt, **ISIInfo)
+			if verbose > 2:
+				print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+
+		FArr.append(err)
+
+	IArr = np.array(IArr)*1000.
+	FArr = 1./np.array(FArr)
+
+	if FArr.shape[1] == 2:
+		p1, cov1 = np.polyfit(IArr, FArr[:, 0], deg=1, full=False,
+			cov=True)
+		p2, cov2 = np.polyfit(IArr, FArr[:, 1], deg=1, full=False,
+			cov=True)
+
+		P = [p1, p2]
+		Cov = [cov1, cov2]
+
+		err = [p[0] for p in P]
+
+	else:
+		P, Cov = np.polyfit(IArr, FArr, deg=1, full=False, cov=True)
+
+		err = P[0]
+
+	return err
+
+
+################################################################################
+##	Get F-I Slope (from dataFeat dictionary!)
+################################################################################
+def getFISlope_from_Dict(featDict, dt=0.001, returnAll=False, **kwds):
+
+	verbose = utl.force_pos_int(verbose, name='epo.getFISlopeDict.verbose',
+		zero_ok=True)
+
+	dt = utl.force_pos_float(dt, name='epo.getFISlopeDict.dt', verbose=verbose)
+
+	err_str = "Keyword argument 'returnAll' must be a boolean!"
+	assert isinstance(returnAll, bool), err_str
+
+	err_str = "Input argument 'featDict' must be a *dictionary* of ephys "
+	err_str += "features containing 'ISI' fields indexed by current."
+	assert isinstance(featDict, dict), err_str
+	assert "ISI" in featDict.keys(), err_str
+	assert "depol" in featDict['ISI'].keys(), err_str
+
+	ISIDict = featDict['ISI']['depol']
+
+	PList, CovList = [], []
+	for key in ISIDict:
+		if isinstance(ISIDict[key], dict):
+			IArr, FArr = [], []
+			for item in ISIDict[key].items():
+				IArr.append(item[0])
+				FArr.append(item[1])
+
+			IArr = np.array(IArr)*1000.
+			FArr = 1./np.array(FArr)
+
+			if FArr.shape[1] == 2:
+				p1, cov1 = np.polyfit(IArr, FArr[:, 0], deg=1, full=False,
+					cov=True)
+				p2, cov2 = np.polyfit(IArr, FArr[:, 1], deg=1, full=False,
+					cov=True)
+
+				P = [p1, p2]
+				Cov = [cov1, cov2]
+
+				err = [p[0] for p in P]
+
+			else:
+				P, Cov = np.polyfit(IArr, FArr, deg=1, full=False, cov=True)
+
+				err = P[0]
+
+			PList.append(P)
+			CovList.append(Cov)
+
+	if returnAll:
+		return PList, CovList
+
+	return err
+
+
+################################################################################
+##	Get Input Resistance
+################################################################################
+def getInputResistance(data, objDict, IArr, featDict=None, dt=0.001, covTol=1.,
+	verbose=0, estC=False, estTau=False, returnAll=False, **kwds):
+
+	## Check that the objDict is the 'objectives' field from an infoDict
+	err_str = "Input argument 'epo.getInputRes.objDict' must be a dictionary!"
+	assert isinstance(objDict, dict), err_str
+
+	## Check verbose
+	verbose = utl.force_pos_int(verbose, name='epo.getInputRes.verbose',
+		zero_ok=True)
+
+	## Check whether to estimate Capacitance, tau
+	err_str = "Keyword argument 'epo.getRI.estC' must be a boolean!"
+	assert isinstance(estC, bool)
+	err_str = "Keyword argument 'epo.getRI.estTau' must be a boolean!"
+	assert isinstance(estTau, bool)
+
+	## Check returnAll keyword
+	err_str = "Keyword argument 'epo.getRI.returnAll' must be a boolean!"
+	assert isinstance(returnAll, bool)
+
+	## Check dt
+	dt = utl.force_pos_float(dt, name='epo.getInputRes.dt', verbose=verbose)
+
+	## Check covTol
+	covTol = utl.force_pos_float(covTol, name='epo.getInputRes.covTol',
+		verbose=verbose)
+
+	## If a feature dictionary is provided, extract the F-I slope from that.
+	## (This method assumes that protocol==DEPOLSTEPS!)
+	if (featDict is not None) and (isinstance(featDict, dict)):
+		if verbose > 1:
+			print("Extracting Input Resistance from Feature Dictionary!")
+		return getRI_from_Dict(featDict, dt=dt, **objDict['RI'])
+
+	if verbose > 1:
+		print("Calculating Input Resistance from Data!")
+
+	## Check that data is the right type and shape
+	err_str = "Input argument 'data' must be 2D array of data."
+	data = utl.force_float_arr(data, name='epo.getInputRes.data',
+		verbose=verbose).squeeze()
+	assert data.ndim == 2, err_str
+
+	## Check that IArr is the right type
+	IArr = utl.force_float_arr(IArr, name='epo.getInputRes.IArr',
+		verbose=verbose).squeeze()*1000.
+
+	## Iterate through the episodes... Assumes dpData is N x NEps shape
+	PList, CovList = [], []
+	for ii, D in enumerate(data.T):
+		if verbose > 2:
+			print(f"Extracting PSD from episode {ii}!")
+
+		PSDInfo = objDict["PSD"]
+		PSDInfo['fit'] = 'exp'
+
+		tGrid = np.arange(len(D))*dt
+
+		P, cov = epu.fitExp(D, times=tGrid, returnAll=True)
+		cov = np.sqrt(cov)
+
+		CoV = cov/np.abs(P)
+
+		if np.all(CoV <= covTol):
+
+			if verbose > 2:
+				print("(epo.getInputRes): Exponential fit was good! " +
+					f"(CoV <= {covTol:.3g})")
+
+		else:
+			if verbose > 3:
+				print("(epo.getInputRes): Exponential fit was not good! " +
+					f"(CoV > {covTol:.3g})")
+
+			P = [D[0], np.mean(D), np.inf]
+			cov = [np.inf, np.std(D), np.inf]
+
+		PList.append(P)
+		CovList.append(cov)
+
+		print()
+		print(P)
+		print(cov)
+
+	PSDArr = np.array([P[1] for P in PList])
+	PSDStdArr = 1./np.array([cov[1] for cov in CovList])
+
+	linP, linCov = np.polyfit(IArr, PSDArr, deg=1, w=PSDStdArr, cov=True)
+	linCov = np.sqrt(np.diag(linCov))
+
+	print()
+	print(linP)
+	print(linCov)
+
+	tauArr = np.array([P[2] if not np.isinf(P[2]) else tGrid[-1] 
+		for P in PList])
+	tauStdArr = np.array([cov[2]**2. if not np.isinf(cov[2]) else 10000. 
+		for cov in CovList])
+	print()
+	print(tauArr)
+	print(tauStdArr)
+
+	tau = np.average(tauArr, weights=1./tauStdArr)*1000.
+	tauStd = np.sqrt(1./np.sum(1./tauStdArr))*1000.
+
+	print()
+	print(tau, tauStd)
+
+	C = tau/linP[0]
+
+	CStd = np.sqrt((tauStd/linP[0])**2. + (tau*linCov[0]/linP[0]**2.)**2.)
+
+	print()
+	print(C, CStd)
+
+
+
+
+	# 	print(err)
+
+	# 	if not isinstance(err, float):
+	# 		err = err[1]
+
+	# 	if verbose > 3:
+	# 		print(f"PSD = {err:.4g}mV")
+
+	# 	PSDArr.append(err)
+
+	# IArr *= 1000.
+	# PSDArr = np.array(PSDArr)
+
+	# P, Cov = np.polyfit(IArr, PSDArr, deg=1, full=False, cov=True)
+
+	# if not returnAll:
+	# 	return P[0]
+
+	# out = {}
+	# out['I'] = IArr.copy()
+	# out['PSD'] = PSDArr.copy()
+
+	# out['linP'] = np.array(P).copy()
+	# out['linCov'] = np.sqrt(np.diag(Cov))
+
+	# tau = 
+
+
+
+	# return P, Cov
+
+	# if FArr.shape[1] == 2:
+	# 	p1, cov1 = np.polyfit(IArr, FArr[:, 0], deg=1, full=False,
+	# 		cov=True)
+	# 	p2, cov2 = np.polyfit(IArr, FArr[:, 1], deg=1, full=False,
+	# 		cov=True)
+
+	# 	P = [p1, p2]
+	# 	Cov = [cov1, cov2]
+
+	# 	err = [p[0] for p in P]
+
+	# else:
+	# 	P, Cov = np.polyfit(IArr, FArr, deg=1, full=False, cov=True)
+
+	# 	err = P[0]
+
+	# return err
+
+
+
+################################################################################
+##	Get F-I Slope (from dataFeat dictionary!)
+################################################################################
+def getRI_from_Dict(featDict, dt=0.001, returnAll=False, verbose=0, **kwds):
+
+	verbose = utl.force_pos_int(verbose, name='epo.getRIDict.verbose',
+		zero_ok=True)
+
+	dt = utl.force_pos_float(dt, name='epo.getRIDict.dt', verbose=verbose)
+
+	err_str = "Keyword argument 'epo.getRIDict.returnAll' must be a boolean!"
+	assert isinstance(returnAll, bool), err_str
+
+	err_str = "Input argument 'epo.getRIDict.featDict' must be a *dictionary* "
+	err_str += "of ephys features containing 'PSD' fields indexed by current."
+	assert isinstance(featDict, dict), err_str
+	assert "PSD" in featDict.keys(), err_str
+	assert "hyperpol" in featDict['PSD'].keys(), err_str
+
+	PSDDict = featDict['PSD']['hyperpol']
+
+	PList, CovList = [], []
+	for key in PSDDict:
+		if isinstance(PSDDict[key], dict):
+			IArr, PSDArr = [], []
+			for item in PSDDict[key].items():
+				IArr.append(item[0])
+				PSDArr.append(item[1])
+
+			IArr = np.array(IArr)*1000.
+			PSDArr = np.array(PSDArr)
+
+			P, Cov = np.polyfit(IArr, PSDArr, deg=1, full=False, cov=True)
+
+			err = P[0]
+
+			PList.append(P)
+			CovList.append(Cov)
+
+	if returnAll:
+		return PList, CovList
+
+	return err
+
+
 
 
 

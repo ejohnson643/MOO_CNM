@@ -395,6 +395,9 @@ def getDepolFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 				err = epo.getISI(spikeIdx, dt=dt, **subInfo)
 
 		elif obj == 'Amp':
+			if len(spikeIdx) == 0:
+				continue
+
 			err = epo.getSpikeAmp(spikeIdx, spikeVals, **subInfo)
 
 			if not isinstance(err, float):
@@ -507,6 +510,131 @@ def getDepolStepsFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 
 	dt = deepcopy(infoDict['data']['dt'])
 
+	data = data[:, 0].squeeze()
+
+	dpData, dpIdx, dpI = getDepolIdx(data, hdr, protocol=EPHYS_PROT_DEPOLSTEPS)
+
+	if verbose > 2:
+		print(f"There are {hdr['lActualEpisodes']} episodes!")
+
+	for ii, dpD in enumerate(dpData.T):
+
+		if verbose > 2:
+			print(f"Extracting features from episode {ii}!")
+
+		spikeIdx, spikeVals = epo.getSpikeIdx(dpD, dt=dt,
+			**infoDict['objectives']['Spikes'])
+
+		for obj in infoDict['objectives']:
+
+			if verbose > 3:
+				print(f"Considering objective {obj}")
+
+			subInfo = infoDict['objectives'][obj]
+
+			if obj == "ISI":
+
+				if subInfo['depol'] in ['thirds', 'lastthird']:
+					bounds = np.linspace(0, len(dpD), 4).astype(int)
+
+					err = []
+
+					first = spikeIdx[spikeIdx < bounds[1]]
+					err.append(epo.getISI(first, dt=dt, **subInfo))
+
+					last = spikeIdx[spikeIdx >= bounds[2]]
+					err.append(epo.getISI(last, dt=dt, **subInfo))
+
+					if subInfo['depol'] == 'lastthird':
+						err = err[-1]
+
+						if verbose > 2:
+							print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+
+					else:
+						if verbose > 2:
+							for e in err:
+								print(f"ISI = {e:.4g}ms (FR = {1/e:.4g}Hz)")
+
+				else:
+					err = epo.getISI(spikeIdx, dt=dt, **subInfo)
+					if verbose > 2:
+						print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+
+			elif obj == 'Amp':
+				err = epo.getSpikeAmp(spikeIdx, spikeVals, **subInfo)
+
+				if not isinstance(err, float):
+					err = err[1]
+
+				if verbose > 2:
+					print(f"Amp = {err:.4g}mV")
+
+			elif obj == 'PSD':
+				err = epo.getPSD(dpD, spikeIdx, dt=dt, **subInfo)
+
+				if not isinstance(err, float):
+					err = err[1]
+
+				if verbose > 2:
+					print(f"PSD = {err:.4g}mV")
+
+			else:
+				continue
+
+			try:
+				_ = dataFeat[obj]
+			except KeyError:
+				dataFeat[obj] = {}
+
+			try:
+				_ = dataFeat[obj]['depol']
+			except KeyError:
+				dataFeat[obj]['depol'] = {}
+
+			if key is not None:
+				key = utl.force_pos_int(key, name='epu.getDepolStepsFeats.key',
+					zero_ok=True, verbose=verbose)
+			else:
+				key = list(out[obj]['depol'].keys()).sort().pop() + 1
+
+			try:
+				_ = dataFeat[obj]['depol'][key]
+			except KeyError:
+				dataFeat[obj]['depol'][key] = {}
+
+			dataFeat[obj]['depol'][key][dpI[ii]] = deepcopy(err)
+
+	if "FI" in infoDict['objectives'].keys():
+
+		err = epo.getFISlope(dpData, infoDict['objectives'], dpI, dt=dt,
+			returnAll=False)
+
+		if verbose > 2:
+			if not isinstance(err, float):
+				for e in err:
+					print(f"F-I Slope = {e:.4g}Hz/pA")
+			else:
+				print(f"F-I Slope = {err:.4g}Hz/pA")
+
+		try:
+			_ = dataFeat['FI']
+		except KeyError:
+			dataFeat['FI'] = {}
+
+		if key is not None:
+			key = utl.force_pos_int(key, name='epu.getDepolStepsFeats.key',
+				zero_ok=True, verbose=verbose)
+		else:
+			key = list(out['FI'].keys()).sort().pop() + 1
+
+		try:
+			_ = dataFeat['FI'][key]
+		except KeyError:
+			dataFeat['FI'][key] = {}
+
+		dataFeat['FI'][key] = deepcopy(err)
+
 	return dataFeat
 
 
@@ -515,6 +643,100 @@ def getDepolStepsFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 ################################################################################
 def getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat, key=None,
 	verbose=0):
+
+	verbose = utl.force_pos_int(verbose,
+		name='epu.getHyperpolStepsFeatures.verbose', zero_ok=True)
+
+	if verbose > 1:
+		print("Getting features from HYPERPOL STEPS PROTOCOL")
+
+	dt = deepcopy(infoDict['data']['dt'])
+
+	data = data[:, 0].squeeze()
+
+	hpData, hpIdx, hpI = getHyperpolIdx(data, hdr,
+		protocol=EPHYS_PROT_HYPERPOLSTEPS)
+
+	if verbose > 2:
+		print(f"There are {hdr['lActualEpisodes']} episodes!")
+
+
+	for ii, hpD in enumerate(hpData.T):
+
+		if verbose > 2:
+			print(f"Extracting features from episode {ii}!")
+
+		spikeIdx, spikeVals = epo.getSpikeIdx(hpD, dt=dt,
+			**infoDict['objectives']['Spikes'])
+
+		for obj in infoDict['objectives']:
+
+			if verbose > 3:
+				print(f"Considering objective {obj}")
+
+			subInfo = infoDict['objectives'][obj]
+
+			if obj == "PSD":
+				err = epo.getPSD(hpD, spikeIdx, dt=dt, **subInfo)
+
+				if not isinstance(err, float):
+					err = err[1]
+
+				if verbose > 2:
+					print(f"PSD = {err:.4g}mV")
+
+			else:
+				continue
+
+			try:
+				_ = dataFeat[obj]
+			except KeyError:
+				dataFeat[obj] = {}
+
+			try:
+				_ = dataFeat[obj]['hyperpol']
+			except:
+				dataFeat[obj]['hyperpol'] = {}
+
+			if key is not None:
+				key = utl.force_pos_int(key, name='epu.getHyperpolFeatures.key',
+					zero_ok=True, verbose=verbose)
+			else:
+				key = list(out[obj]['hyperpol'].keys()).sort().pop() + 1
+
+			try:
+				_ = dataFeat[obj]['hyperpol'][key]
+			except KeyError:
+				dataFeat[obj]['hyperpol'][key] = {}
+
+			dataFeat[obj]['hyperpol'][key][hpI[ii]] = deepcopy(err)
+
+	if "RI" in infoDict['objectives'].keys():
+
+		err = epo.getInputResistance(hpData, infoDict['objectives'], hpI,
+			dt=dt, **infoDict['objectives']['RI'])
+
+		if verbose > 2:
+			print(f"Input Resistance = {err:.4g} GOhms")
+
+		try:
+			_ = dataFeat['RI']
+		except KeyError:
+			dataFeat['RI'] = {}
+
+		if key is not None:
+			key = utl.force_pos_int(key, name='epu.getHyperpolStepsFeats.key',
+				zero_ok=True, verbose=verbose)
+		else:
+			key = list(out['RI'].keys()).sort().pop() + 1
+
+		try:
+			_ = dataFeat['RI'][key]
+		except KeyError:
+			dataFeat['RI'][key] = {}
+
+		dataFeat['RI'][key] = deepcopy(err)
+
 	return dataFeat
 
 
@@ -577,9 +799,9 @@ def getDepolIdx(data, hdr, protocol=None, verbose=0):
 		protocol = utl.force_int(protocol, name='epu.getHyperpolIdx.verbose',
 			verbose=verbose)
 
-	epochIdx = getEpochIdx(hdr)[0]
-
 	uDACChan = hdr['nActiveDACChannel']
+
+	epochIdx = getEpochIdx(hdr)
 
 	## If not known protocol, raise error
 	if protocol < 0:
@@ -588,8 +810,11 @@ def getDepolIdx(data, hdr, protocol=None, verbose=0):
 		raise ValueError(err_str)
 
 	elif protocol == EPHYS_PROT_DEPOLSTEP:
-		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
 
+		err_str = f"Input argument 'data' must have 1 dims, got {data.ndim}."
+		assert data.ndim == 1, err_str
+
+		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
 
 		epochLevs = hdr['fEpochInitLevel'][uDACChan]
 		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
@@ -616,7 +841,6 @@ def getDepolIdx(data, hdr, protocol=None, verbose=0):
 
 		return data, dpIdx, dpI
 
-
 	elif protocol == EPHYS_PROT_DEPOLSTEPS:
 
 		err_str = f"Input argument 'data' must have 2 dims, got {data.ndim}."
@@ -631,24 +855,50 @@ def getDepolIdx(data, hdr, protocol=None, verbose=0):
 		else:
 			epochIncs = hdr['fEpochLevelInc'][uDACChan]
 			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
+			dpEpchIdx = (epochIncs).nonzero()[0]
 
-			dpEpchIdx = (epochIdx).nonzero()[0]
 
-		startIdx = int(epochIdx[dpEpchIdx+1])
-		endIdx = int(epochIdx[dpEpchIdx+2])
-		dpIdx = (startIdx, endIdx)
+		if len(np.unique(epochIdx, axis=0)) == 1:
+			epochIdx = epochIdx[0]
 
-		data = data[startIdx:endIdx]
+			startIdx = int(epochIdx[dpEpchIdx+1])
+			endIdx = int(epochIdx[dpEpchIdx+2])
+			dpIdx = (startIdx, endIdx)
 
-		dpI = []
-		for epNo in range(hdr['lActualEpisodes']):
+			data = data[startIdx:endIdx]
 
-			tmpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
-			tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+			dpI = []
+			for epNo in range(hdr['lActualEpisodes']):
 
-			dpI.append(tmpI)
+				tmpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+				tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
 
-		return data, dpIdx, np.array(dpI)
+				dpI.append(tmpI)
+
+		else:
+			dpData, dpIdx, dpI = [], [], []
+
+			for epNo in range(hdr['lActualEpisodes']):
+
+				startIdx = int(epochIdx[epNo, dpEpchIdx+1])
+				endIdx = int(epochIdx[epNo, dpEpchIdx+2])
+				dpIdx.append((startIdx, endIdx))
+
+				dpData.append(data[startIdx:endIdx, epNo])
+
+				tmpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+				tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+
+				dpI.append(tmpI)
+
+			try:
+				data = np.array(dpData).astype(float)
+			except:
+				err_str = f"Error coercing dpData into np.ndarray... Probably "
+				err_str += "should not allow episodes of different lengths!"
+				raise ValueError(err_str)
+
+		return data, dpIdx, np.array(dpI).squeeze()
 
 	else:
 		err_str = f"Invalid value for keyword 'protocol'... Protocol={protocol}"
@@ -699,9 +949,7 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 		protocol = utl.force_int(protocol, name='epu.getHyperpolIdx.verbose',
 			verbose=verbose)
 
-	print(protocol)
-
-	epochIdx = getEpochIdx(hdr)[0]
+	epochIdx = getEpochIdx(hdr)
 
 	uDACChan = hdr['nActiveDACChannel']
 
@@ -718,26 +966,26 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
 		if len(np.unique(epochLevs)) == 2:
-			dpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
+			hpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
 
-			dpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
+			hpI = hdr['fEpochInitLevel'][uDACChan][hpEpchIdx]
 
 		else:
 			epochIncs = hdr['fEpochLevelInc'][uDACChan]
 			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
-			dpEpchIdx = (epochIdx).nonzero()[0]
+			hpEpchIdx = (epochIdx).nonzero()[0]
 
-			dpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
-			dpI += hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+			hpI = hdr['fEpochInitLevel'][uDACChan][hpEpchIdx]
+			hpI += hdr['fEpochLevelInc'][uDACChan][hpEpchIdx]
 
-		startIdx = int(epochIdx[dpEpchIdx+1])
-		endIdx = int(epochIdx[dpEpchIdx+2])
-		dpIdx = (startIdx, endIdx)
+		startIdx = int(epochIdx[hpEpchIdx+1])
+		endIdx = int(epochIdx[hpEpchIdx+2])
+		hpIdx = (startIdx, endIdx)
 
 		data = data[startIdx:endIdx]
 
-		return data, dpIdx, dpI
+		return data, hpIdx, hpI
 
 
 	elif protocol == EPHYS_PROT_HYPERPOLSTEPS:
@@ -749,29 +997,55 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
 		if len(np.unique(epochLevs)) == 2:
-			dpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
+			hpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
 
 		else:
 			epochIncs = hdr['fEpochLevelInc'][uDACChan]
 			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
-			dpEpchIdx = (epochIdx).nonzero()[0]
+			hpEpchIdx = (epochIncs).nonzero()[0]
 
-		startIdx = int(epochIdx[dpEpchIdx+1])
-		endIdx = int(epochIdx[dpEpchIdx+2])
-		dpIdx = (startIdx, endIdx)
+		if len(np.unique(epochIdx, axis=0)) == 1:
+			epochIdx = epochIdx[0]
 
-		data = data[startIdx:endIdx]
+			startIdx = int(epochIdx[hpEpchIdx+1])
+			endIdx = int(epochIdx[hpEpchIdx+2])
+			hpIdx = (startIdx, endIdx)
 
-		dpI = []
-		for epNo in range(hdr['lActualEpisodes']):
+			data = data[startIdx:endIdx]
 
-			tmpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
-			tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
+			hpI = []
+			for epNo in range(hdr['lActualEpisodes']):
 
-			dpI.append(tmpI)
+				tmpI = hdr['fEpochInitLevel'][uDACChan][hpEpchIdx]
+				tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][hpEpchIdx]
 
-		return data, dpIdx, np.array(dpI)
+				hpI.append(tmpI)
+
+		else:
+			hpData, hpIdx, hpI = [], [], []
+
+			for epNo in range(hdr['lActualEpisodes']):
+
+				startIdx = int(epochIdx[epNo, hpEpchIdx+1])
+				endIdx = int(epochIdx[epNo, hpEpchIdx+2])
+				hpIdx.append((startIdx, endIdx))
+
+				hpData.append(data[startIdx:endIdx, epNo])
+
+				tmpI = hdr['fEpochInitLevel'][uDACChan][hpEpchIdx]
+				tmpI += epNo*hdr['fEpochLevelInc'][uDACChan][hpEpchIdx]
+
+				hpI.append(tmpI)
+
+			try:
+				data = np.array(hpData).astype(float)
+			except:
+				err_str = f"Error coercing hpData into np.ndarray... Probably "
+				err_str += "should not allow episodes of different lengths!"
+				raise ValueError(err_str)
+
+		return data, hpIdx, np.array(hpI).squeeze()
 
 	else:
 		err_str = f"Invalid value for keyword 'protocol'... Protocol={protocol}"
@@ -827,9 +1101,9 @@ def fitExp(data, times=None, returnAll=False):
 
 	## If needed, return everything
 	if returnAll:
-		return np.array(params), np.array(cov)
+		return np.array(params).astype(float), np.array(cov).astype(float)
 	else:
-		return np.array(params)
+		return np.array(params).astype(float)
 
 
 ################################################################################

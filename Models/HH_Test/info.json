@@ -71,7 +71,10 @@
 			"verbose":0
 		},
 		"RI":{
-			"type":"RI"
+			"verbose":5
+		},
+		"FI":{
+			"verbose":0
 		},
 		"kDist":{
 			"type":"rest",

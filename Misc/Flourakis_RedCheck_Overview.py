@@ -256,7 +256,7 @@ if __name__ == "__main__":
 
 				# print(f"{key}: Depolarization Steps Protocol")
 				dataFeat = epu.getDepolStepsFeatures(data, hdr, infoDict,
-					dataFeat, key=key, verbose=2)
+					dataFeat, key=key, verbose=3)
 
 		########################################################################
 		## Hyperpolarization Step Protocol
@@ -264,7 +264,8 @@ if __name__ == "__main__":
 			elif protocol == EPHYS_PROT_HYPERPOLSTEPS:
 
 				# print(f"{key}: Hyperpolarization Steps Protocol")
-				pass
+				dataFeat = epu.getHyperpolStepsFeatures(data, hdr, infoDict,
+					dataFeat, key=key, verbose=3)
 
 		########################################################################
 		## Hyperpolarization Step Protocol
@@ -280,6 +281,9 @@ if __name__ == "__main__":
 			else:
 				# print(f"{key}: UNKNOWN PROTOCOL")
 				pass
+
+			if protocol == 4:
+				break
 
 		break
 

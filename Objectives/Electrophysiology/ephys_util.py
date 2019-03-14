@@ -747,7 +747,80 @@ def getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat, key=None,
 ## Get Electrophysiology Features from Constant Holding Protocol
 ################################################################################
 def getConstHoldFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
-	return dataFeat
+
+	verbose = utl.force_pos_int(verbose,
+		name='epu.getConstHoldFeatures.verbose', zero_ok=True)
+
+	if verbose > 1:
+		print("Getting features from CONSTANT HOLD PROTOCOL")
+
+	if hdr['lActualEpisodes'] > 1:
+		if verbose:
+			print("WARNING: At this time, we cannot handle multi-episode hold"
+				"ing current protocols (non-rest + no current-injection).")
+		return dataFeat
+
+	data = data[:, 0].squeeze()
+
+	## For const hold protocols, want to make spikes are larger than noise
+	holdData = data[:int(abf.GetHoldingDuration(hdr)/hdr['nADCNumChannels'])]
+	spikeDict = infoDict['objectives']['Spikes'].copy()
+	# spikeDict['minProm'] = 3*np.std(holdData)
+	spikeDict['minProm'] = np.max(data) - np.median(data)
+
+	spikeIdx, spikeVals = epo.getSpikeIdx(data, dt=infoDict['data']['dt'],
+		**spikeDict)
+
+	for obj in infoDict['objectives']:
+
+		subInfo = infoDict['objectives'][obj]
+
+		## For const hold protocols, only want mean fit.
+		subInfo['fit'] = 'mean'
+
+		if obj == 'ISI':
+			err = epo.getISI(spikeIdx, dt=infoDict['data']['dt'],
+				**subInfo)
+
+			if verbose > 2:
+				print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
+
+		elif obj == 'Amp':
+			err = epo.getSpikeAmp(spikeIdx, spikeVals,
+				dt=infoDict['data']['dt'], **subInfo)
+
+			if verbose > 2:
+				print(f"Amp = {err:.4g}mV")
+
+		elif obj == 'PSD':
+			err = epo.getPSD(data, spikeIdx,
+				dt=infoDict['data']['dt'], **subInfo)
+
+			if verbose > 2:
+				print(f"PSD = {err:.4g}mV")
+
+		else:
+			continue
+
+		try:
+			_ = dataFeat[obj]
+		except KeyError:
+			dataFeat[obj] = {}
+
+		try:
+			_ = dataFeat[obj]['hold']
+		except KeyError:
+			dataFeat[obj]['hold'] = {}
+
+		if key is not None:
+			key = utl.force_pos_int(key, name='epu.getConstHoldFeatures.key',
+				zero_ok=True, verbose=verbose)
+		else:
+			key = list(out[obj]['hold'].keys()).sort().pop() + 1
+
+		dataFeat[obj]['hold'][key] = deepcopy(err)
+
+	return dataFeat.copy()
 
 
 ################################################################################
@@ -969,6 +1042,15 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 		raise ValueError(err_str)
 
 	elif protocol == EPHYS_PROT_HYPERPOLSTEP:
+
+		if len(np.unique(epochIdx, axis=0)) == 1:
+			epochIdx = epochIdx[0]
+		else:
+			err_str = "ERROR: Multiple epoch protocols for HYPERPOL STEP "
+			err_str += "PROTOCOL!"
+			raise ValueError(err_str)
+
+
 		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
 
 		epochLevs = hdr['fEpochInitLevel'][uDACChan]

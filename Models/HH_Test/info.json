@@ -57,7 +57,8 @@
 		"Spikes":{
 			"exact":true,
 			"maxRate":50.0,
-			"verbose":0
+			"verbose":0,
+			"NSpikes":5
 		},
 		"ISI":{
 			"depol":"thirds",

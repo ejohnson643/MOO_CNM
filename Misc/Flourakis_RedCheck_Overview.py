@@ -166,7 +166,10 @@ if __name__ == "__main__":
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
 
-		dateStr = "01/04/2011"
+		if dateNo != 1:
+			continue
+
+		# dateStr = "01/04/2011"
 		# dateStr = "24/10/2012"
 		print(f"\nLoading data from {dateStr} ({dateNo+1}/"+
 			f"{len(WT.index.values)})")
@@ -276,7 +279,8 @@ if __name__ == "__main__":
 			elif protocol == EPHYS_PROT_CONSTHOLD:
 
 				# print(f"{key}: Constant Holding Current Protocol")
-				pass
+				dataFeat = epu.getConstHoldFeatures(data, hdr, infoDict,
+					dataFeat, key=key, verbose=2)
 
 		########################################################################
 		## Hyperpolarization Step Protocol

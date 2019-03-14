@@ -71,8 +71,8 @@ if True:
 ################################################################################
 ##	Get Index Locations of Action Potentials
 ################################################################################
-def getSpikeIdx(data, dt=0.001, minDiff=7., thresh=None, maxRate=50., 
-	exact=False, minProm=8., pad=1, verbose=0, **kwds):
+def getSpikeIdx(data, dt=0.001, minDiff=5., thresh=None, maxRate=100., 
+	exact=False, minProm=2., pad=1, verbose=0, **kwds):
 
 	############################################################################
 	##	Check Inputs, Keyword Arguments
@@ -94,8 +94,8 @@ def getSpikeIdx(data, dt=0.001, minDiff=7., thresh=None, maxRate=50.,
 		minDiff = utl.force_pos_float(minDiff, name='spike.minDiff',
 			zero_ok=True, verbose=verbose)
 
-		maxmin = data.max() - data.min()
-		if (data.max() - np.median(data)) < minDiff:
+		maxmin = data.max() - np.percentile(data, 10)
+		if maxmin < minDiff:
 			return [], []
 
 		if thresh is not None:
@@ -123,8 +123,14 @@ def getSpikeIdx(data, dt=0.001, minDiff=7., thresh=None, maxRate=50.,
 	############################################################################
 	##	Get Index Locations of Action Potentials
 	############################################################################
-	peakIdx, _ = sig.find_peaks(data, threshold=thresh, distance=minISI,
+
+	grid = np.arange(len(data))
+	smoother = intrp.UnivariateSpline(grid, data, s=int(len(data)/10.))
+	smoothData = smoother(grid)
+
+	peakIdx, _ = sig.find_peaks(smoothData, threshold=thresh, distance=minISI,
 		prominence=minProm)
+
 	NPeaks = len(peakIdx)
 
 	############################################################################
@@ -146,7 +152,7 @@ def getSpikeIdx(data, dt=0.001, minDiff=7., thresh=None, maxRate=50.,
 	for itr, (wl, wr) in enumerate(zip(wLeft, wRight)):
 
 		## Peak width must be > 3 indices apart and less than maxRate half-width
-		rightSize = ((wr - wl) > 3) and ((wr - wl) < int(minISI/2.))
+		rightSize = ((wr - wl) > 3) and ((wr - wl) <= int(minISI/2.))
 		counter, maxCounter = 0, 10
 		while not rightSize:
 
@@ -156,20 +162,20 @@ def getSpikeIdx(data, dt=0.001, minDiff=7., thresh=None, maxRate=50.,
 			## If the width is too small, pad it to make it larger
 			if (wr - wl) <= 3:
 				if itr > 0:
-					wl = max(wl-pad, wRight[itr-1])
+					wl = max(wl-pad, min(wRight[itr-1], wRight[itr]))
 				else:
 					wl = max(wl-pad, 0)
 
 				if itr < NPeaks-1:
-					wr = min(wr+pad, wLeft[itr+1])
+					wr = min(wr+pad, max(wLeft[itr+1], wLeft[itr]))
 				else:
 					wr = min(wr+pad, len(data)-1)
 
 			## If the width is too large, move halfway closer to the peak
-			elif (wr - wl) >= int(minISI/2.):
-				if (peakIdx[itr] - wl) >= int(minISI/4.):
+			elif (wr - wl) > int(minISI/2.):
+				if (peakIdx[itr] - wl) > int(minISI/4.):
 					wl += int((peakIdx[itr] - wl)/2.)
-				if (wr - peakIdx[itr]) >= int(minISI/4.):
+				if (wr - peakIdx[itr]) > int(minISI/4.):
 					wr -= int((wr - peakIdx[itr])/2.)
 
 			## Right size yet?
@@ -182,6 +188,10 @@ def getSpikeIdx(data, dt=0.001, minDiff=7., thresh=None, maxRate=50.,
 					print("(getSpikeIdx) WARNING: Could not find optimal "+
 						f"spike width in {maxCounter} attempts... Moving on...")
 				break
+
+		if (wr - wl) <= 3:
+			print(f"{itr}: WL", wl, wLeft[itr-2:itr+3])
+			print(f"{itr}: WR", wr, wRight[itr-2:itr+3])
 
 		if verbose > 2:
 			print(f"{itr}:\t{wl} - {peakIdx[itr]} - {wr} - {wr-wl}")
@@ -247,7 +257,7 @@ def getISI(spikeIdx, dt=0.001, minRate=0., NSpikes=1, **kwds):
 
 	## If the minimum number of spikes are present
 	if len(spikeIdx) > NSpikes:
-		ISI = np.mean(np.diff(spikeIdx))*dt
+		ISI = np.median(np.diff(spikeIdx))*dt
 		if 1./ISI >= minRate:
 			return ISI
 
@@ -514,6 +524,8 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 	if (featDict is not None) and (isinstance(featDict, dict)):
 		if verbose > 1:
 			print("Extracting F-I Slope from Feature Dictionary!")
+			print("WARNING: Will not use weighted least-squares because not "+
+				"recomputing spike indices!")
 		return getFISlope_from_Dict(featDict, dt=dt, **objDict['FI'])
 
 	if verbose > 1:
@@ -530,7 +542,7 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 		verbose=verbose).squeeze()
 
 	## Iterate through the episodes... Assumes dpData is N x NEps shape
-	FArr = []
+	FArr, IQRArr = [], []
 	for ii, D in enumerate(data.T):
 		if verbose > 2:
 			print(f"Extracting ISI from episode {ii}!")
@@ -543,15 +555,28 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 			bounds = np.linspace(0, len(D), 4).astype(int)
 
 			err = []
+			iqr = []
 
 			first = spikeIdx[spikeIdx < bounds[1]]
 			err.append(getISI(first, dt=dt, **ISIInfo))
+			if len(first) > 5:
+				iqr.append(list(np.percentile(1./(np.diff(first)*dt), [25,75])))
+			else:
+				iqr.append([np.min(1./(np.diff(first)*dt)),
+					np.max(1./(np.diff(first)*dt))])
+
 
 			last = spikeIdx[spikeIdx >= bounds[2]]
 			err.append(getISI(last, dt=dt, **ISIInfo))
+			if len(first) > 5:
+				iqr.append(list(np.percentile(1./(np.diff(last)*dt), [25, 75])))
+			else:
+				iqr.append([np.min(1./(np.diff(last)*dt)),
+					np.max(1./(np.diff(last)*dt))])
 
 			if ISIInfo['depol'] == 'lastthird':
 				err = err[-1]
+				iqr = iqr[-1]
 
 				if verbose > 3:
 					print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
@@ -567,23 +592,31 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 				print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
 
 		FArr.append(err)
+		IQRArr.append(iqr)
 
 	IArr = np.array(IArr)*1000.
 	FArr = 1./np.array(FArr)
+	IQRArr = np.diff(np.array(IQRArr), axis=2).squeeze()/2.
+	IQRArr[IQRArr == 0] = np.inf
+	# print(FArr)
+	# print(IQRArr)
+	# print(np.diff(IQRArr, axis=2).squeeze())
 
 	if FArr.shape[1] == 2:
-		p1, cov1 = np.polyfit(IArr, FArr[:, 0], deg=1, full=False,
-			cov=True)
-		p2, cov2 = np.polyfit(IArr, FArr[:, 1], deg=1, full=False,
-			cov=True)
+		p1, cov1 = np.polyfit(IArr, FArr[:, 0], deg=1, w=1./IQRArr[:, 0],
+			full=False, cov=True)
+		p2, cov2 = np.polyfit(IArr, FArr[:, 1], deg=1, w=1./IQRArr[:, 1],
+			full=False, cov=True)
 
 		P = [p1, p2]
+		print(P)
 		Cov = [cov1, cov2]
 
 		err = [p[0] for p in P]
 
 	else:
-		P, Cov = np.polyfit(IArr, FArr, deg=1, full=False, cov=True)
+		P, Cov = np.polyfit(IArr, FArr, deg=1, w=1./IQRArr,
+			full=False, cov=True)
 
 		err = P[0]
 
@@ -716,7 +749,7 @@ def getInputResistance(data, objDict, IArr, featDict=None, dt=0.001, covTol=1.,
 
 		if np.all(CoV <= covTol):
 
-			if verbose > 2:
+			if verbose > 3:
 				print("(epo.getInputRes): Exponential fit was good! " +
 					f"(CoV <= {covTol:.3g})")
 
@@ -731,93 +764,57 @@ def getInputResistance(data, objDict, IArr, featDict=None, dt=0.001, covTol=1.,
 		PList.append(P)
 		CovList.append(cov)
 
-		print()
-		print(P)
-		print(cov)
-
 	PSDArr = np.array([P[1] for P in PList])
 	PSDStdArr = 1./np.array([cov[1] for cov in CovList])
 
 	linP, linCov = np.polyfit(IArr, PSDArr, deg=1, w=PSDStdArr, cov=True)
 	linCov = np.sqrt(np.diag(linCov))
 
-	print()
-	print(linP)
-	print(linCov)
+	if verbose > 3:
+		print("(epo.getInputRes): Linear fit to V-I curve yields " +
+			f"V = {linP[0]:.4g}I + {linP[1]:.4g}\n" +
+			f"That is,\n\t\tR_I = {linP[0]:.4g} +/- {linCov[0]:.4g} GOhm")
 
 	tauArr = np.array([P[2] if not np.isinf(P[2]) else tGrid[-1] 
 		for P in PList])
 	tauStdArr = np.array([cov[2]**2. if not np.isinf(cov[2]) else 10000. 
 		for cov in CovList])
-	print()
-	print(tauArr)
-	print(tauStdArr)
 
 	tau = np.average(tauArr, weights=1./tauStdArr)*1000.
 	tauStd = np.sqrt(1./np.sum(1./tauStdArr))*1000.
 
-	print()
-	print(tau, tauStd)
+	if (verbose > 3) and estTau:
+		print("(epo.getInputRes): Estimating time-constant as\n\t\t"+
+			f"tau = {tau:.4g} +/- {tauStd:.4g} ms")
 
 	C = tau/linP[0]
 
 	CStd = np.sqrt((tauStd/linP[0])**2. + (tau*linCov[0]/linP[0]**2.)**2.)
 
-	print()
-	print(C, CStd)
+	if (verbose > 3) and estC:
+		print("(epo.getInputRes): Estimating cell capacitance as C = RI/tau" +
+			f"\n\t\tC = {C:.4g} +/- {CStd:.4g} pF")
 
+	if not returnAll:
+		return linP[0]
 
+	out = {
+		"expFitPs":PList,
+		"expFitCovs":CovList,
+		"I":IArr,
+		"linFitP":linP,
+		"linFitCov":linCov
+	}
 
+	if estC:
+		out['C'] = C
+		out['CStd'] = CStd
 
-	# 	print(err)
+	if estTau:
+		out['tau'] = tau
+		out['tauStd'] = tauStd
 
-	# 	if not isinstance(err, float):
-	# 		err = err[1]
-
-	# 	if verbose > 3:
-	# 		print(f"PSD = {err:.4g}mV")
-
-	# 	PSDArr.append(err)
-
-	# IArr *= 1000.
-	# PSDArr = np.array(PSDArr)
-
-	# P, Cov = np.polyfit(IArr, PSDArr, deg=1, full=False, cov=True)
-
-	# if not returnAll:
-	# 	return P[0]
-
-	# out = {}
-	# out['I'] = IArr.copy()
-	# out['PSD'] = PSDArr.copy()
-
-	# out['linP'] = np.array(P).copy()
-	# out['linCov'] = np.sqrt(np.diag(Cov))
-
-	# tau = 
-
-
-
-	# return P, Cov
-
-	# if FArr.shape[1] == 2:
-	# 	p1, cov1 = np.polyfit(IArr, FArr[:, 0], deg=1, full=False,
-	# 		cov=True)
-	# 	p2, cov2 = np.polyfit(IArr, FArr[:, 1], deg=1, full=False,
-	# 		cov=True)
-
-	# 	P = [p1, p2]
-	# 	Cov = [cov1, cov2]
-
-	# 	err = [p[0] for p in P]
-
-	# else:
-	# 	P, Cov = np.polyfit(IArr, FArr, deg=1, full=False, cov=True)
-
-	# 	err = P[0]
-
-	# return err
-
+	return out
 
 
 ################################################################################

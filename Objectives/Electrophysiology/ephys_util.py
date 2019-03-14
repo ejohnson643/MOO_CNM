@@ -716,6 +716,9 @@ def getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat, key=None,
 		err = epo.getInputResistance(hpData, infoDict['objectives'], hpI,
 			dt=dt, **infoDict['objectives']['RI'])
 
+		if isinstance(err, dict):
+			err = err['linFitP'][0]
+
 		if verbose > 2:
 			print(f"Input Resistance = {err:.4g} GOhms")
 
@@ -813,6 +816,12 @@ def getDepolIdx(data, hdr, protocol=None, verbose=0):
 
 		err_str = f"Input argument 'data' must have 1 dims, got {data.ndim}."
 		assert data.ndim == 1, err_str
+
+		if len(np.unique(epochIdx, axis=0)) == 1:
+			epochIdx = epochIdx[0]
+		else:
+			err_str = "ERROR: Multiple epoch protocols for DEPOL STEP PROTOCOL!"
+			raise ValueError(err_str)
 
 		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
 
@@ -1082,16 +1091,27 @@ def fitExp(data, times=None, returnAll=False):
 
 	## Try and fit the curve!
 	try:
-		## Set initial guess based on data
+	## Set initial guess based on data
 		p0 = [
 			max(-150, min(data[0], 100)),
 			max(-150, min(np.mean(data), 100)),
 			max(0, min(len(data)/10., np.inf))
 		]
 
+		lb = [
+			min(-150, data[0]-20),
+			min(-150, data.min() - 30),
+			0
+		]
+
+		ub = [
+			max(100, data[0]+20),
+			max(100, data.max() + 30),
+			np.inf
+		]
+
 		## Fit the curve with some reasonable bounds
-		params, cov = curve_fit(offsetExp, times, data, p0=p0,
-			bounds=([-150, -150, 0], [100, 100, np.inf]))
+		params, cov = curve_fit(offsetExp, times, data, p0=p0, bounds=(lb, ub))
 		cov = np.diag(cov)
 
 	## If something went wrong, return a really bad result

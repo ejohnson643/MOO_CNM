@@ -166,8 +166,8 @@ if __name__ == "__main__":
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
 
-		# dateStr = "01/04/2011"
-		dateStr = "24/10/2012"
+		dateStr = "01/04/2011"
+		# dateStr = "24/10/2012"
 		print(f"\nLoading data from {dateStr} ({dateNo+1}/"+
 			f"{len(WT.index.values)})")
 
@@ -206,6 +206,9 @@ if __name__ == "__main__":
 		prots = []
 
 		for key in keys:
+
+			# if key != 17:
+			# 	continue
 
 			data = dataDict[dateStr][key]['data']
 			hdr = dataDict[dateStr][key]['header']
@@ -256,7 +259,7 @@ if __name__ == "__main__":
 
 				# print(f"{key}: Depolarization Steps Protocol")
 				dataFeat = epu.getDepolStepsFeatures(data, hdr, infoDict,
-					dataFeat, key=key, verbose=3)
+					dataFeat, key=key, verbose=2)
 
 		########################################################################
 		## Hyperpolarization Step Protocol
@@ -265,7 +268,7 @@ if __name__ == "__main__":
 
 				# print(f"{key}: Hyperpolarization Steps Protocol")
 				dataFeat = epu.getHyperpolStepsFeatures(data, hdr, infoDict,
-					dataFeat, key=key, verbose=3)
+					dataFeat, key=key, verbose=2)
 
 		########################################################################
 		## Hyperpolarization Step Protocol
@@ -281,9 +284,6 @@ if __name__ == "__main__":
 			else:
 				# print(f"{key}: UNKNOWN PROTOCOL")
 				pass
-
-			if protocol == 4:
-				break
 
 		break
 

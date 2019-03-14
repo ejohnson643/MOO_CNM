@@ -56,7 +56,8 @@
 	"objectives":{
 		"Spikes":{
 			"exact":true,
-			"maxRate":50.0
+			"maxRate":50.0,
+			"verbose":0
 		},
 		"ISI":{
 			"depol":"thirds",
@@ -71,7 +72,10 @@
 			"verbose":0
 		},
 		"RI":{
-			"verbose":5
+			"verbose":5,
+			"estTau":true,
+			"estC":true,
+			"returnAll":true
 		},
 		"FI":{
 			"verbose":0

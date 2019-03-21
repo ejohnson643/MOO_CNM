@@ -103,7 +103,7 @@ def convert_time(text):
 	return hours + minutes
 
 def isWT(entry):
-	if entry['Geno'] in ['WT', 'WT_OA', 'WT_PP', 'WT_DL', 'WTcer']:
+	if entry['Geno'] == 'WT':
 		return True
 	else:
 		return False
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 ################################################################################
 ## Load csv
 ################################################################################
-	csvfile = "../EA_Code/RedChecksData_Flourakis.csv"
+	csvfile = "./Misc/RedChecksData_Flourakis.csv"
 
 	converters = {
 		'ZT': convert_time,
@@ -188,30 +188,71 @@ if __name__ == "__main__":
 		dataFeatDir = DIO.find_date_folder(dateStr, dataDir)
 		dataFeatPath = os.path.join(dataFeatDir, "dataFeat.pkl")
 
-		if not gen_new_data:
-			try:
-				print(f"\nTrying to load {dataFeatPath}...")
-				with open(dataFeatPath, "rb") as f:
-					dataFeat = pkl.load(f)
-				print(f"Loaded dataFeat.pkl")
-				continue
-			except:
-				print(f"Could not load dataFeat.pkl...")
-				pass
+		try:
+			print(f"\nTrying to load {dataFeatPath}...")
+			with open(dataFeatPath, "rb") as f:
+				dataFeat = pkl.load(f)
+			print(f"Loaded dataFeat.pkl")
+		except:
+			print(f"Could not load dataFeat.pkl...")
+			dataFeat = {}
+			pass
 
 	############################################################################
 	## Iterate through Objectives
 	############################################################################
-		dataFeat = {}
 
 		keys = sorted(list(dataDict[dateStr].keys()))
+
+		goodRecs = WT['Recordings'].values[dateNo]
+		if goodRecs[1] == -1:
+			goodRecs[1] = keys[-1]
+		goodRecs = np.arange(goodRecs[0], goodRecs[1]+1, 1).astype(int)
 
 		prots = []
 
 		for key in keys:
 
-			# if key != 17:
-			# 	continue
+			if key not in goodRecs:
+				continue
+
+			if gen_new_data:
+				for feat in dataFeat:
+					try:
+						_ = dataFeat[feat][key]
+						del dataFeat[feat][key]
+						continue
+					except KeyError:
+						pass
+						
+					for prot in dataFeat[feat]:
+						try:
+							_ = dataFeat[feat][prot][key]
+							del dataFeat[feat][prot][key]
+							continue
+						except KeyError:
+							pass
+
+			else:
+				skipKey = False
+				for feat in dataFeat:
+					try:
+						_ = dataFeat[feat][key]
+						skipKey = True
+					except KeyError:
+						pass
+						
+					for prot in dataFeat[feat]:
+						try:
+							_ = dataFeat[feat][prot][key]
+							skipKey = True
+							break
+						except KeyError:
+							pass
+					if skipKey:
+						break
+				if skipKey:
+					continue
 
 			data = dataDict[dateStr][key]['data']
 			hdr = dataDict[dateStr][key]['header']
@@ -278,6 +319,9 @@ if __name__ == "__main__":
 		########################################################################
 			elif protocol == EPHYS_PROT_CONSTHOLD:
 
+				if len(data) > 30000:
+					continue
+
 				# print(f"{key}: Constant Holding Current Protocol")
 				dataFeat = epu.getConstHoldFeatures(data, hdr, infoDict,
 					dataFeat, key=key, verbose=2)
@@ -291,7 +335,10 @@ if __name__ == "__main__":
 
 		break
 
-		print("\n".join([", ".join([f"{p}" for p in pline]) for pline in prots]))
+	# print("\n".join([", ".join([f"{p}" for p in pline]) for pline in prots]))
+
+	with open(dataFeatPath, "wb") as f:
+		pkl.dump(dataFeat, f)
 
 ################################################################################
 ## Show plots!

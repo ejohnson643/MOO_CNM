@@ -72,7 +72,7 @@ if True:
 ##	Get Index Locations of Action Potentials
 ################################################################################
 def getSpikeIdx(data, dt=0.001, minDiff=5., thresh=None, maxRate=100., 
-	exact=False, minProm=2., pad=1, verbose=0, **kwds):
+	exact=False, minProm=None, wlen=200, window=100, pad=1, verbose=0, **kwds):
 
 	############################################################################
 	##	Check Inputs, Keyword Arguments
@@ -109,8 +109,18 @@ def getSpikeIdx(data, dt=0.001, minDiff=5., thresh=None, maxRate=100.,
 		err_str = "Keyword argument 'exact' must be a boolean."
 		assert isinstance(exact, bool), err_str
 
-		minProm = utl.force_pos_float(minProm, name='spike.minProm',
-			zero_ok=True, verbose=verbose)
+		if minProm is not None:
+			minProm = utl.force_pos_float(minProm, name='spike.minProm',
+				zero_ok=True, verbose=verbose)
+
+		minProm = max(np.diff(np.percentile(data, [10, 90]))[0], minProm)
+
+		wlen = utl.force_pos_int(wlen, name='epo.getSpikeIdx.wlen',
+			verbose=verbose)
+
+		window = utl.force_pos_int(window, name='epo.getSpikeIdx.window',
+			verbose=verbose)
+		window = window + 1 if ((window % 2) == 0) else window
 
 		pad = utl.force_pos_int(pad, name='spike.pad', verbose=verbose)
 
@@ -124,12 +134,17 @@ def getSpikeIdx(data, dt=0.001, minDiff=5., thresh=None, maxRate=100.,
 	##	Get Index Locations of Action Potentials
 	############################################################################
 
-	grid = np.arange(len(data))
-	smoother = intrp.UnivariateSpline(grid, data, s=int(len(data)/10.))
-	smoothData = smoother(grid)
+	order = int(window*.5)
+	dataMed = sig.order_filter(data, np.ones(window), order)
 
-	peakIdx, _ = sig.find_peaks(smoothData, threshold=thresh, distance=minISI,
-		prominence=minProm)
+	dataNoMed = data - dataMed
+
+	# grid = np.arange(len(data))
+	# smoother = intrp.UnivariateSpline(grid, data, s=int(len(data)/2.))
+	# smoothData = smoother(grid)
+
+	peakIdx, _ = sig.find_peaks(dataNoMed, threshold=thresh, distance=minISI,
+		prominence=minProm, wlen=wlen)
 
 	NPeaks = len(peakIdx)
 

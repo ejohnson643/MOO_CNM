@@ -180,6 +180,9 @@ def getExpProtocol(hdr, useList=True):
 					else:
 						return EPHYS_PROT_HYPERPOLSTEP
 
+			elif len(epochIncs) == 1:
+				return EPHYS_PROT_CONSTHOLD
+
 	## It its none of these return unknown
 	return -1
 
@@ -407,7 +410,7 @@ def getDepolFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 				print(f"Amp = {err:.4g}mV")
 
 		elif obj == 'PSD':
-			err = epo.getPSD(data, spikeIdx, dt=dt, **subInfo)
+			err = epo.getPSD(dpData, spikeIdx, dt=dt, **subInfo)
 
 			if not isinstance(err, float):
 				err = err[1]
@@ -765,8 +768,6 @@ def getConstHoldFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 	## For const hold protocols, want to make spikes are larger than noise
 	holdData = data[:int(abf.GetHoldingDuration(hdr)/hdr['nADCNumChannels'])]
 	spikeDict = infoDict['objectives']['Spikes'].copy()
-	# spikeDict['minProm'] = 3*np.std(holdData)
-	spikeDict['minProm'] = np.max(data) - np.median(data)
 
 	spikeIdx, spikeVals = epo.getSpikeIdx(data, dt=infoDict['data']['dt'],
 		**spikeDict)

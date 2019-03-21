@@ -117,6 +117,8 @@ Overall:
  - Check that infoDict['objs']['spikes']['maxRate'] == ['ISI']['maxRate']
  - Eliminate 'kwds' field from objectives.  Just use **iDict[objs][obj].
 
+ - Verify that Data Numbers Match Flourakis Reported Data
+
 In Progress:
 ============
  - Runfile checking

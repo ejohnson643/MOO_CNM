@@ -40,6 +40,9 @@ import os
 import pandas as pd
 import pickle as pkl
 import seaborn as sns
+import scipy.interpolate as intrp
+import scipy.signal as sig
+from skimage.filters import threshold_otsu as otsu
 
 import Objectives.Electrophysiology.ephys_objs as epo
 import Objectives.Electrophysiology.ephys_util as epu
@@ -259,9 +262,175 @@ if __name__ == "__main__":
 
 			protocol = epu.getExpProtocol(hdr)
 
+	############################################################################
+	## TRYING TO FIGURE OUT SPIKES
+	############################################################################
+
+			fig, [ax1, ax2] = plt.subplots(2, 1, sharex=True, figsize=(16, 7))
+
+			if protocol == EPHYS_PROT_DEPOLSTEP:
+				dpData, dpIdx, dpI = epu.getDepolIdx(data[:, 0].squeeze(), hdr,
+					protocol=EPHYS_PROT_DEPOLSTEP)
+			else:
+				dpData = deepcopy(data[:, 0].squeeze())
+			grid = np.arange(len(dpData))
+
+			ax1.plot(grid, dpData)
+
+			window, perc = 201, 50
+			order = int(window*perc/100.)
+			medArr = sig.order_filter(dpData, np.ones(window), order)
+
+			noMed = dpData - medArr
+
+			ax2.plot(grid, noMed)
+
+			smoother = intrp.UnivariateSpline(grid, noMed,
+				s=min(int(len(data)/10.), 5000))
+			smthNoMed = smoother(grid)
+
+			# ax2.plot(grid, smthNoMed, color='orange')
+
+			dt, maxRate = 0.001, 50.
+			minISI = int(1./dt/maxRate)
+
+
+
+			noThresh = None
+			tMed90 = np.percentile(noMed, 90)
+			tMed99 = np.percentile(noMed, 99)
+			tSmth90 = np.percentile(smthNoMed, 90)
+			tSmth99 = np.percentile(smthNoMed, 99)
+			print(f"\nThresholds\n\ttMed90: {tMed90:.4g}\n\t"+
+				f"tMed99: {tMed99:.4g}\n\ttSmth90: {tSmth90:.4g}\n\t"+
+				f"tSmth99: {tSmth99:.4g}")
+
+			plt.hlines(y=[tMed90, tMed99], xmin=0, xmax=len(grid), color='b')
+
+			# plt.hlines(y=[tSmth90, tSmth99], xmin=0, xmax=len(grid),
+			# 	color='orange')
+
+			pmin = 1
+			noProm = None
+			minProm = 5
+			pMed90 = np.diff(np.percentile(noMed, [pmin, 90]))[0]
+			pMed99 = np.diff(np.percentile(noMed, [pmin, 99]))[0]
+			pSmth90 = np.diff(np.percentile(smthNoMed, [pmin, 90]))[0]
+			pSmth99 = np.diff(np.percentile(smthNoMed, [pmin, 99]))[0]
+
+			print(f"Prominences\n\tpMed90: {pMed90:.4g}\n\t"+
+				f"pMed99: {pMed99:.4g}\n\tpSmth90: {pSmth90:.4g}\n\t"+
+				f"pSmth99: {pSmth99:.4g}")
+
+			thresh = tMed90
+			prom = pMed90
+
+			peakIdx, foo = sig.find_peaks(noMed, height=thresh,
+				distance=minISI, prominence=prom, wlen=200)
+
+			ax1.scatter(peakIdx, dpData[peakIdx],
+				c='r', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
+
+			ax2.scatter(peakIdx, noMed[peakIdx],
+				c='r', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
+
+			peakIdx2, foo2 = sig.find_peaks(noMed, height=tMed99,
+				distance=minISI, prominence=prom, wlen=200)
+
+			ax1.scatter(peakIdx2+10, dpData[peakIdx2]+0.5,
+				c='g', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
+
+			ax2.scatter(peakIdx2+10, noMed[peakIdx2]+0.5,
+				c='g', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
+
+			ax1.legend()
+			ax2.legend()
+
+			# threshs = {'None':noThresh,
+			# 	"tMed90":tMed90,
+			# 	"tMed99":tMed99,
+			# 	"tSmth90":tSmth90,
+			# 	"tSmth99":tSmth99}
+
+			# proms = {'None':noProm,
+			# 	"Fixed":minProm,
+			# 	"pMed90":pMed90,
+			# 	"pMed99":pMed99,
+			# 	"pSmth90":pSmth90,
+			# 	"pSmth99":pSmth99}
+
+			# for tNo, (tName, thresh) in enumerate(threshs.items()):
+			# 	marker = "o*^sX"[tNo]
+			# 	for pNo, (pName, prom) in enumerate(proms.items()):
+			# 		color = "krgymc"[pNo]
+
+			# 		print(f"Finding peaks for {tName}, {pName}")
+
+			# 		peakIdx, foo = sig.find_peaks(noMed, height=thresh,
+			# 			distance=minISI, prominence=prom, wlen=200)
+
+			# 		ax1.scatter(peakIdx+tNo*10, dpData[peakIdx]+pNo*.5,
+			# 			c=color, marker=marker, label=f"{tName}, {pName}")
+
+			# 		ax2.scatter(peakIdx+tNo*10, noMed[peakIdx]+pNo*.5,
+			# 			c=color, marker=marker, label=f"{tName}, {pName}")
+
+
+			# ax1.legend(fontsize=6, ncol=5)
+
+
+			# ax2.legend(fontsize=6, ncol=5)
+
+
+
+
+
+			fig.suptitle(f"Key = {key}", fontsize=24)
+
+			fig.tight_layout()
+
+
+			allIdx, allFoo = sig.find_peaks(noMed, height=None,
+				distance=minISI, prominence=prom, wlen=200)
+
+			bins = np.linspace(np.min(noMed[allIdx]), np.max(noMed[allIdx]), 11)
+
+			lowIdx, lowFoo = sig.find_peaks(noMed, height=tMed90,
+				distance=minISI, prominence=prom, wlen=200)
+			highIdx, highFoo = sig.find_peaks(noMed, height=tMed99,
+				distance=minISI, prominence=prom, wlen=200)
+
+			fig2, axDist = plt.subplots(1,1, figsize=(8, 6))
+
+			sns.distplot(noMed[allIdx], hist_kws=dict(cumulative=False), bins=bins,
+				kde_kws=dict(cumulative=False), ax=axDist, label='All Idx')
+
+			sns.distplot(noMed[lowIdx], hist_kws=dict(cumulative=False), bins=bins,
+				kde_kws=dict(cumulative=False), ax=axDist, label='Low Idx')
+
+			sns.distplot(noMed[highIdx], hist_kws=dict(cumulative=False), bins=bins,
+				kde_kws=dict(cumulative=False), ax=axDist, label='High Idx')
+
+			lowThresh = otsu(noMed[lowIdx])
+			highThresh = otsu(noMed[highIdx])
+
+			axDist.vlines(x=[lowThresh, highThresh], ymin=0, ymax=0.5, color=['r', 'g'])
+
+			axDist.legend()
+
+			fig2.suptitle(f"Key = {key}", fontsize=24)
+
+			fig2.tight_layout()
+
+			break
+
 			prots.append([key, protocol])
 
 			print(f"{key}: {protocol}")
+
+	############################################################################
+	## TRYING TO FIGURE OUT SPIKES
+	############################################################################
 
 		########################################################################
 		## Rest Protocol

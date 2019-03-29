@@ -113,7 +113,9 @@ def getSpikeIdx(data, dt=0.001, minDiff=5., thresh=None, maxRate=100.,
 			minProm = utl.force_pos_float(minProm, name='spike.minProm',
 				zero_ok=True, verbose=verbose)
 
-		minProm = max(np.diff(np.percentile(data, [10, 90]))[0], minProm)
+		pmin, pmax = 10, 90
+		data9010 = np.diff(np.percentile(data, [pmin, pmax]))[0]
+		# minProm = max(data9010, minProm)
 
 		wlen = utl.force_pos_int(wlen, name='epo.getSpikeIdx.wlen',
 			verbose=verbose)
@@ -138,6 +140,15 @@ def getSpikeIdx(data, dt=0.001, minDiff=5., thresh=None, maxRate=100.,
 	dataMed = sig.order_filter(data, np.ones(window), order)
 
 	dataNoMed = data - dataMed
+
+	thresh = np.percentile(dataNoMed, 90)
+
+	noMedData9010 = np.diff(np.percentile(dataNoMed, [pmin, pmax]))[0]
+	# minProm = max(noMedData9010, minProm)
+	minProm = noMedData9010
+	print(f"minProm = {minProm:.4g}mV")
+	print(f"data p90-p10 = {data9010:.4g}mV")
+	print(f"data no med p90-p10 = {noMedData9010:.4g}mV")
 
 	# grid = np.arange(len(data))
 	# smoother = intrp.UnivariateSpline(grid, data, s=int(len(data)/2.))

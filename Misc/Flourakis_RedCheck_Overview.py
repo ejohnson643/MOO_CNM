@@ -33,6 +33,7 @@
 """
 from copy import deepcopy
 import datetime
+from Misc.dip import *
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -508,6 +509,91 @@ if __name__ == "__main__":
 
 	with open(dataFeatPath, "wb") as f:
 		pkl.dump(dataFeat, f)
+
+
+
+	plt.close('all')
+
+
+	pltBins = bins[:-1] + np.diff(bins)
+
+	pdf, _ = np.histogram(noMed[lowIdx], bins=bins, density=True)
+	pdf /= np.sum(pdf)
+
+	cdf = np.cumsum(pdf)/np.sum(pdf)
+
+
+	tmp_cdf = cdf - pdf
+
+	plt.plot(pltBins, tmp_cdf)
+
+	tmp_idx = pltBins.copy()
+
+	gcm = [tmp_cdf[0]]
+	l_tps = [0]
+
+	while len(tmp_cdf) > 1:
+		dists = tmp_idx[1:] - tmp_idx[0]
+		slopes = (tmp_cdf[1:] - tmp_cdf[0])/dists
+
+		minslope = slopes.min()
+		minIdx = np.where(slopes == minslope)[0][0] + 1
+
+		gcm.extend(tmp_cdf[0] + dists[:minIdx]*minslope)
+
+		l_tps.append(l_tps[-1] + minIdx)
+
+		tmp_cdf = tmp_cdf[minIdx:]
+		tmp_idx = tmp_idx[minIdx:]
+
+	plt.plot(pltBins[:len(gcm)], gcm)
+
+	print(l_tps)
+
+	gcm = np.array(gcm)
+	l_tps = np.array(l_tps).astype(int)
+	plt.scatter(pltBins[l_tps], gcm[l_tps])
+
+
+	tmp_cdf = 1 - cdf
+	tmp_idx = pltBins.max() - pltBins[::-1]
+
+	plt.figure()
+	plt.plot(tmp_idx, tmp_cdf)
+
+	lcm = [tmp_cdf[0]]
+	r_tps = [0]
+
+	while len(tmp_cdf) > 1:
+		dists = tmp_idx[1:] - tmp_idx[0]
+		slopes = (tmp_cdf[1:] - tmp_cdf[0])/dists
+
+		minslope = slopes.min()
+		minIdx = np.where(slopes == minslope)[0][0] + 1
+
+		lcm.extend(tmp_cdf[0] + dists[:minIdx]*minslope)
+
+		r_tps.append(r_tps[-1] + minIdx)
+
+		tmp_cdf = tmp_cdf[minIdx:]
+		tmp_idx = tmp_idx[minIdx:]
+
+	lcm = np.array(lcm)
+	r_tps = np.array(r_tps).astype(int)
+
+	tmp_idx = pltBins.max() - pltBins[::-1]
+	plt.plot(tmp_idx[:len(lcm)], lcm)
+
+	lcm = 1 - lcm[::-1]
+	r_tps = len(cdf) - 1 - r_tps[::-1]
+
+	left_diffs = np.abs((gcm[l_tps] - lcm[l_tps]))
+	right_diffs = np.abs((gcm[r_tps] - lcm[r_tps]))
+
+	d_left, d_right = left_diffs.max(), right_diffs.max()
+
+
+	plt.close('all')
 
 ################################################################################
 ## Show plots!

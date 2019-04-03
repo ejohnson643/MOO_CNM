@@ -31,9 +31,9 @@
 ================================================================================
 ================================================================================
 """
+import collections
 from copy import deepcopy
 import datetime
-from Misc.dip import *
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,6 +44,8 @@ import seaborn as sns
 import scipy.interpolate as intrp
 import scipy.signal as sig
 from skimage.filters import threshold_otsu as otsu
+
+from Misc.dip import *
 
 import Objectives.Electrophysiology.ephys_objs as epo
 import Objectives.Electrophysiology.ephys_util as epu
@@ -220,6 +222,9 @@ if __name__ == "__main__":
 			if key not in goodRecs:
 				continue
 
+			if key != 15:
+				continue
+
 			if gen_new_data:
 				for feat in dataFeat:
 					try:
@@ -300,13 +305,9 @@ if __name__ == "__main__":
 			noThresh = None
 			tMed90 = np.percentile(noMed, 90)
 			tMed99 = np.percentile(noMed, 99)
-			tSmth90 = np.percentile(smthNoMed, 90)
-			tSmth99 = np.percentile(smthNoMed, 99)
 			print(f"\nThresholds\n\ttMed90: {tMed90:.4g}\n\t"+
-				f"tMed99: {tMed99:.4g}\n\ttSmth90: {tSmth90:.4g}\n\t"+
-				f"tSmth99: {tSmth99:.4g}")
+				f"tMed99: {tMed99:.4g}")
 
-			plt.hlines(y=[tMed90, tMed99], xmin=0, xmax=len(grid), color='b')
 
 			# plt.hlines(y=[tSmth90, tSmth99], xmin=0, xmax=len(grid),
 			# 	color='orange')
@@ -316,18 +317,47 @@ if __name__ == "__main__":
 			minProm = 5
 			pMed90 = np.diff(np.percentile(noMed, [pmin, 90]))[0]
 			pMed99 = np.diff(np.percentile(noMed, [pmin, 99]))[0]
-			pSmth90 = np.diff(np.percentile(smthNoMed, [pmin, 90]))[0]
-			pSmth99 = np.diff(np.percentile(smthNoMed, [pmin, 99]))[0]
 
 			print(f"Prominences\n\tpMed90: {pMed90:.4g}\n\t"+
-				f"pMed99: {pMed99:.4g}\n\tpSmth90: {pSmth90:.4g}\n\t"+
-				f"pSmth99: {pSmth99:.4g}")
+				f"pMed99: {pMed99:.4g}")
 
 			thresh = tMed90
 			prom = pMed90
 
-			peakIdx, foo = sig.find_peaks(noMed, height=thresh,
-				distance=minISI, prominence=prom, wlen=200)
+			threshLevel = 90
+			while True:
+
+				plt.hlines(y=thresh, xmin=0, xmax=len(grid), color='k')
+
+				peakIdx, foo = sig.find_peaks(noMed, height=thresh,
+					distance=minISI, prominence=prom, wlen=200)
+				peakVals = noMed[peakIdx]
+
+				D, P = dipTest(peakVals)
+				print(f"\nThe likelihood that this data is unimodal is {P:.4g}"+
+					f" (D = {D:.4g})")
+
+
+				oThr = otsu(peakVals)
+
+				lowMed = np.median(peakVals[peakVals <= oThr])
+				highMed = np.median(peakVals[peakVals > oThr])
+				print(f"Otsu Thr: {oThr:.4g} ({sum(peakVals <= oThr)} on left"+
+					f" {sum(peakVals > oThr)} on right)")
+
+				print(f"Low Median {lowMed:.4g}, High Median {highMed:.4g}")
+
+				if (P > .3) and (highMed - lowMed <= 5):
+					break
+
+				if (highMed - lowMed <= 5):
+					break
+
+				threshLevel += (100 - threshLevel)/2.
+				thresh = np.percentile(noMed, threshLevel)
+				print(f"The threshold level is {threshLevel} ({thresh:.4g})")
+
+
 
 			ax1.scatter(peakIdx, dpData[peakIdx],
 				c='r', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
@@ -335,14 +365,17 @@ if __name__ == "__main__":
 			ax2.scatter(peakIdx, noMed[peakIdx],
 				c='r', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
 
-			peakIdx2, foo2 = sig.find_peaks(noMed, height=tMed99,
-				distance=minISI, prominence=prom, wlen=200)
+			# peakIdx2, foo2 = sig.find_peaks(noMed, height=tMed99,
+			# 	distance=minISI, prominence=prom, wlen=200)
 
-			ax1.scatter(peakIdx2+10, dpData[peakIdx2]+0.5,
-				c='g', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
+			# D2, P2 = dipTest(noMed[peakIdx2])
+			# print(f"The likelihood that this data is unimodal is {P2:.4g}")
 
-			ax2.scatter(peakIdx2+10, noMed[peakIdx2]+0.5,
-				c='g', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
+			# ax1.scatter(peakIdx2+10, dpData[peakIdx2]+0.5,
+			# 	c='g', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
+
+			# ax2.scatter(peakIdx2+10, noMed[peakIdx2]+0.5,
+			# 	c='g', marker='o', label=f"h = {thresh:.4g}, p = {prom:.4g}")
 
 			ax1.legend()
 			ax2.legend()
@@ -398,7 +431,7 @@ if __name__ == "__main__":
 
 			lowIdx, lowFoo = sig.find_peaks(noMed, height=tMed90,
 				distance=minISI, prominence=prom, wlen=200)
-			highIdx, highFoo = sig.find_peaks(noMed, height=tMed99,
+			highIdx, highFoo = sig.find_peaks(noMed, height=thresh,
 				distance=minISI, prominence=prom, wlen=200)
 
 			fig2, axDist = plt.subplots(1,1, figsize=(8, 6))
@@ -511,89 +544,189 @@ if __name__ == "__main__":
 		pkl.dump(dataFeat, f)
 
 
-
-	plt.close('all')
-
-
-	pltBins = bins[:-1] + np.diff(bins)
-
-	pdf, _ = np.histogram(noMed[lowIdx], bins=bins, density=True)
-	pdf /= np.sum(pdf)
-
-	cdf = np.cumsum(pdf)/np.sum(pdf)
+	# plt.close('all')
 
 
-	tmp_cdf = cdf - pdf
+	# myData = np.round(noMed[lowIdx], 3)
 
-	plt.plot(pltBins, tmp_cdf)
+	# ## Implementing a visualization of Hartigans' dip test
 
-	tmp_idx = pltBins.copy()
+	# h = collections.Counter(myData)
+	# idx = np.sort(list(h.keys()))
+	# hist = np.array([h[i] for i in idx])
 
-	gcm = [tmp_cdf[0]]
-	l_tps = [0]
+	# hist = hist/sum(hist)
 
-	while len(tmp_cdf) > 1:
-		dists = tmp_idx[1:] - tmp_idx[0]
-		slopes = (tmp_cdf[1:] - tmp_cdf[0])/dists
+	# cdf = np.cumsum(hist, dtype=float)
+	# cdf /= cdf[-1]
 
-		minslope = slopes.min()
-		minIdx = np.where(slopes == minslope)[0][0] + 1
+	# ## Calculating greatest convex majorant
 
-		gcm.extend(tmp_cdf[0] + dists[:minIdx]*minslope)
+	# biggcm, biglTps = getGCM(cdf-hist, idx.copy())
 
-		l_tps.append(l_tps[-1] + minIdx)
+	# # tmpIdx, tmpHist, tmpCDF = idx.copy(), hist.copy(), cdf.copy()
 
-		tmp_cdf = tmp_cdf[minIdx:]
-		tmp_idx = tmp_idx[minIdx:]
+	# # ## This gives the lower bounding curve of the cdf (plot to see)
+	# # tmpPts = tmpCDF-tmpHist
 
-	plt.plot(pltBins[:len(gcm)], gcm)
+	# # ## Starting from the left edge
+	# # gcm, lTps = [tmpPts[0]], [0]
 
-	print(l_tps)
+	# # while len(tmpPts) > 1:
+	# # 	dists = tmpIdx[1:] - tmpIdx[0]
+	# # 	slopes = (tmpPts[1:] - tmpPts[0])/dists
 
-	gcm = np.array(gcm)
-	l_tps = np.array(l_tps).astype(int)
-	plt.scatter(pltBins[l_tps], gcm[l_tps])
+	# # 	minSlope = slopes.min()
+	# # 	minIdx = np.where(slopes == minSlope)[0][0] + 1
 
+	# # 	gcm.extend(tmpPts[0] + dists[:minIdx]*minSlope)
+	# # 	lTps.append(lTps[-1] + minIdx)
 
-	tmp_cdf = 1 - cdf
-	tmp_idx = pltBins.max() - pltBins[::-1]
+	# # 	tmpPts = tmpPts[minIdx:]
+	# # 	tmpIdx = tmpIdx[minIdx:]
 
-	plt.figure()
-	plt.plot(tmp_idx, tmp_cdf)
+	# # gcm = np.array(gcm)
+	# # lTps = np.array(lTps).astype(int)
 
-	lcm = [tmp_cdf[0]]
-	r_tps = [0]
-
-	while len(tmp_cdf) > 1:
-		dists = tmp_idx[1:] - tmp_idx[0]
-		slopes = (tmp_cdf[1:] - tmp_cdf[0])/dists
-
-		minslope = slopes.min()
-		minIdx = np.where(slopes == minslope)[0][0] + 1
-
-		lcm.extend(tmp_cdf[0] + dists[:minIdx]*minslope)
-
-		r_tps.append(r_tps[-1] + minIdx)
-
-		tmp_cdf = tmp_cdf[minIdx:]
-		tmp_idx = tmp_idx[minIdx:]
-
-	lcm = np.array(lcm)
-	r_tps = np.array(r_tps).astype(int)
-
-	tmp_idx = pltBins.max() - pltBins[::-1]
-	plt.plot(tmp_idx[:len(lcm)], lcm)
-
-	lcm = 1 - lcm[::-1]
-	r_tps = len(cdf) - 1 - r_tps[::-1]
-
-	left_diffs = np.abs((gcm[l_tps] - lcm[l_tps]))
-	right_diffs = np.abs((gcm[r_tps] - lcm[r_tps]))
-
-	d_left, d_right = left_diffs.max(), right_diffs.max()
+	# print(f"\nGlobal Left Touchpoints: {biglTps}")
 
 
-	plt.close('all')
+	# ## Calculating least concave minorant
+
+	# # tmpIdx, tmpHist, tmpCDF = idx.copy(), hist.copy(), cdf.copy()
+
+	# # ## This gives the lower bounding curve of the cdf (plot to see)
+	# # tmpPts = 1 - tmpCDF[::-1]
+	# # tmpIdx = tmpIdx.max() - tmpIdx[::-1]
+
+	# biglcm, bigrTps = getLCM(cdf.copy(), idx.copy())
+
+	# # ## Starting from the left edge
+	# # lcm, rTps = [tmpPts[0]], [0]
+
+	# # while len(tmpPts) > 1:
+	# # 	dists = tmpIdx[1:] - tmpIdx[0]
+	# # 	slopes = (tmpPts[1:] - tmpPts[0])/dists
+
+	# # 	minSlope = slopes.min()
+	# # 	minIdx = np.where(slopes == minSlope)[0][0] + 1
+
+	# # 	lcm.extend(tmpPts[0] + dists[:minIdx]*minSlope)
+	# # 	rTps.append(rTps[-1] + minIdx)
+
+	# # 	tmpPts = tmpPts[minIdx:]
+	# # 	tmpIdx = tmpIdx[minIdx:]
+
+	# # lcm = np.array(lcm)
+	# # rTps = np.array(rTps).astype(int)
+
+	# # lcm = 1 - lcm[::-1]
+	# # rTps = len(cdf) - 1 - rTps[::-1]
+
+	# print(f"\nGlobal Right Touchpoints: {bigrTps}")
+
+	# tmpIdx, tmpHist, tmpCDF = idx.copy(), hist.copy(), cdf.copy()
+	# D, lIdx, rIdx = 0, [0], [1]
+	# counter = 0
+	# while True:
+	# 	lPart, lTps = getGCM(tmpCDF-tmpHist, tmpIdx.copy())
+	# 	rPart, rTps = getLCM(tmpCDF.copy(), tmpIdx.copy())
+
+	# 	lDiffs = np.abs(rPart[lTps]-lPart[lTps])
+	# 	rDiffs = np.abs(rPart[rTps]-lPart[rTps])
+	# 	dL, dR = lDiffs.max(), rDiffs.min()
+
+	# 	print(f"\nIteration {counter + 1}")
+	# 	counter += 1
+
+	# 	print(f"dL = {dL:.4g}, dR = {dR:.4g}, dR > dL = {dR > dL}")
+
+	# 	if dR > dL:
+	# 		xr = rTps[dR == rDiffs][-1]
+	# 		xl = lTps[lTps <= xr][-1]
+	# 		d = dR
+	# 	else:
+	# 		xl = lTps[dL == lDiffs][0]
+	# 		xr = rTps[rTps >= xl][0]
+	# 		d = dL
+
+	# 	print(f"xl = {xl}, xr = {xr}")
+
+	# 	if d <= D or xr == 0 or xl == len(tmpCDF):
+	# 		the_dip = max(np.abs(cdf[:len(lIdx)] - lIdx).max(),
+	# 			np.abs(cdf[-len(rIdx)-1:-1] - rIdx).max())
+	# 		print(np.abs(cdf[:len(lIdx)] - lIdx).max(),
+	# 			np.abs(cdf[-len(rIdx)-1:-1] - rIdx).max())
+	# 		print(f"Good enough! Done! Dip = {the_dip:.4g}")
+	# 		break
+	# 	else:
+	# 		D = max(D, np.abs(lPart[:xl+1]-tmpCDF[:xl+1]).max(),
+	# 			np.abs(rPart[xr:] - tmpCDF[xr:] + tmpHist[xr:]).max())
+
+	# 	tmpCDF = tmpCDF[xl:xr+1]
+	# 	tmpIdx = tmpIdx[xl:xr+1]
+	# 	tmpHist = tmpHist[xl:xr+1]
+
+	# 	lIdx[len(lIdx):] = lPart[1:xl+1]
+	# 	rIdx[:0] = rPart[xr:-1]
+
+
+
+	# ## Plotting some stuff
+
+	# fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+
+	# ax.plot(np.repeat(idx, 2)[1:], np.repeat(cdf, 2)[:-1], color='c',
+	# 	label='CDF')
+
+	# ax.plot(idx, biggcm, 'r', alpha=0.5, lw=1, label='Global GCM')
+	# ax.scatter(idx[biglTps], biggcm[biglTps], color='r', alpha=0.5)
+
+	# ax.plot(idx, biglcm, 'b', alpha=0.5, lw=1, label='Global LCM')
+	# ax.scatter(idx[bigrTps], biglcm[bigrTps], color='b', alpha=0.5)
+
+	# ax.plot(np.repeat(idx[:len(lIdx)], 2)[1:], 
+	# 	np.repeat(cdf[:len(lIdx)], 2)[:-1], color='gray')
+	# ax.plot(np.repeat(idx[-len(rIdx):], 2)[1:], 
+	# 	np.repeat(cdf[-len(rIdx):], 2)[:-1] , color='gray')
+
+	# ax.plot(tmpIdx, lPart, color='r', label='GCM in [xL, xU]')
+	# ax.plot(tmpIdx, rPart, color='b', label='LCM in [xL, xU]')
+	# ax.scatter(tmpIdx[lTps], lPart[lTps], color='r')
+	# ax.scatter(tmpIdx[rTps], rPart[rTps], color='b')
+
+	# xlim = ax.get_xlim()
+	# ax.hlines(y=[0, 1], xmin=xlim[0], xmax=xlim[1], color='gray', linestyle=':')
+	# ax.set_xlim(xlim)
+
+	# ylim = ax.get_ylim()
+	# ax.vlines(x=[tmpIdx.min(), tmpIdx.max()], ymin=ylim[0], ymax=ylim[1],
+	# 	color='green', linestyle='--')
+	# # ax.set_ylim(ylim)
+
+	# l_dip_idx = np.abs(cdf[:len(lIdx)]-lIdx) == the_dip
+	# r_dip_idx = np.abs(cdf[-len(rIdx)-1:-1]-rIdx) == the_dip
+	# if np.any(l_dip_idx):
+	# 	ax.vlines(x=idx[:len(lIdx)][l_dip_idx], ymin=cdf[:len(lIdx)][l_dip_idx],
+	# 		ymax=cdf[:len(lIdx)][l_dip_idx]-the_dip, color='purple',
+	# 		linewidth=3, label=f'The Dip = {the_dip/2.:.4g}', zorder=3)
+	# 	ax.scatter(2*[idx[:len(lIdx)][l_dip_idx]], [cdf[:len(lIdx)][l_dip_idx],
+	# 		cdf[:len(lIdx)][l_dip_idx]-the_dip], color='purple', zorder=3)
+	# if np.any(r_dip_idx):
+	# 	ax.vlines(x=idx[-len(rIdx):][r_dip_idx],
+	# 		ymax=cdf[-len(rIdx)-1:-1][r_dip_idx]+the_dip,
+	# 		ymin=cdf[-len(rIdx)-1:-1][r_dip_idx],  color='purple',
+	# 		linewidth=3, label=f'The Dip = {the_dip/2.:.4g}', zorder=3)
+	# 	ax.scatter(2*[idx[-len(rIdx):][r_dip_idx]], [cdf[-len(rIdx)-1:-1][r_dip_idx],
+	# 		cdf[-len(rIdx)-1:-1][r_dip_idx]+the_dip], color='purple', zorder=3)
+
+	# ax.set_xlabel("Spike Height", fontsize=16)
+	# ax.set_ylabel(r"$P(h \leq H_{spike})$", fontsize=16)
+
+	# ax.legend(fontsize=12)
+
+	# fig.tight_layout()
+
 
 ################################################################################
 ## Show plots!

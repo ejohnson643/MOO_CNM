@@ -139,42 +139,6 @@ def dip(hist=None, idx=None, returnAll=False):
 		rVals[:0] = rPart[xr:-1]
 
 
-# def plot_dip(hist=None, idx=None):
-
-# 	import matplotlib.pyplot as plt
-
-# 	d, (cdf, idx, lVals, lPart, rVals, rPart) = dip(hist=hist, idx=idx,
-# 		returnAll=True)
-# 	print(d)
-
-# 	plt.plot(idx[:len(lVals)], lVals, color='red')
-# 	plt.plot(idx[len(lVals)-1:len(lVals)+len(lPart) - 1], lPart, color='gray')
-# 	plt.plot(idx[-len(rVals):], rVals, color='blue')
-# 	plt.plot(idx[len(cdf)-len(rVals)+1-len(rPart):len(cdf)-len(rVals)+1], 
-# 		rPart, color='gray')
-
-# 	plt.plot(np.repeat(idx,2)[1:], np.repeat(cdf,2)[:-1], color='black')
-# 	plt.scatter(idx, cdf)
-
-# 	the_dip = max(np.abs(cdf[:len(lVals)] - lVals).max(),
-# 		np.abs(cdf[-len(rVals)-1:-1] - rVals).max())
-# 	l_dip_idx = np.abs(cdf[:len(lVals)] - lVals) == the_dip
-# 	r_dip_idx = np.abs(cdf[-len(rVals)-1:-1] - rVals) == the_dip
-
-# 	print(the_dip)
-
-# 	if np.any(l_dip_idx):
-# 		plt.vlines(x=idx[:len(lVals)][l_dip_idx],
-# 			ymin=cdf[:len(lVals)][l_dip_idx],
-# 			ymax = cdf[:len(lVals)][l_dip_idx] - the_dip, color='g')
-# 	if np.any(r_dip_idx):
-# 		plt.vlines(x=idx[-len(rVals):][r_dip_idx],
-# 			ymin=cdf[-len(rVals)-1:-1][r_dip_idx],
-# 			ymax = cdf[-len(rVals)-1:-1][r_dip_idx] + the_dip, color='g')
-
-# 	plt.show()
-
-
 def dipPlot(hist=None, idx=None, ax=None, showGlobals=True, showLegend=True):
 
 	import matplotlib.pyplot as plt

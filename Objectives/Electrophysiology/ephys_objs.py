@@ -34,6 +34,7 @@
 ================================================================================
 ================================================================================
 """
+from collections import Counter
 from copy import deepcopy
 import numpy as np
 import scipy.interpolate as intrp
@@ -41,6 +42,7 @@ from scipy.optimize import curve_fit
 import scipy.signal as sig
 import scipy.stats as st
 from skimage import filters
+import warnings
 
 import Objectives.Electrophysiology.ephys_util as epu
 
@@ -67,206 +69,454 @@ if True:
 ################################################################################
 ################################################################################
 
-
 ################################################################################
 ##	Get Index Locations of Action Potentials
 ################################################################################
-def getSpikeIdx(data, dt=0.001, minDiff=5., thresh=None, maxRate=100., 
-	exact=False, minProm=None, wlen=200, window=100, pad=1, verbose=0, **kwds):
+def getSpikeIdx(data, dt=0.001, maxRate=100., exact=True, pad=1, 
+	minSlope=20., window=100, thresh=None, pThresh=90., minProm=None, 
+	pProm=(1, 90), maxMedDiff=5., verbose=0, **kwds):
 
 	############################################################################
-	##	Check Inputs, Keyword Arguments
+	##	Check Inputs, Keyword Arguments, Setup Median Subtraction
 	############################################################################
 	if True:
-		data = utl.force_float_arr(data, name='spike.data',
-			verbose=verbose).squeeze()
-
+		## Check the verbosity keyword
 		verbose = utl.force_pos_int(verbose, name='spike.verbose', 
 			zero_ok=True, verbose=verbose)
+
+		## Check the type and shape of the data
+		data = utl.force_float_arr(data, name='spike.data',
+			verbose=verbose).squeeze()
 
 		err_str = "Input argument 'data' must be 1D array."
 		err_str += f" (data.ndim = {data.ndim})"
 		assert data.ndim == 1, err_str
 
-		## Set the minimum range of ephys data for spike detection
-		## By default, if the range < 7mV, then it's assumed there are no
-		## spikes...
-		minDiff = utl.force_pos_float(minDiff, name='spike.minDiff',
-			zero_ok=True, verbose=verbose)
-
-		maxmin = data.max() - np.percentile(data, 10)
-		if maxmin < minDiff:
-			return [], []
-
-		if thresh is not None:
-			thresh = utl.force_float(thresh, name='spike.thresh',
-				verbose=verbose)
-
+		## Check maxRate, set minimum ISI
 		maxRate = utl.force_pos_float(maxRate, name='spike.maxRate',
 			verbose=verbose)
 		minISI = int(1./dt/maxRate)
 
+		## Check that we're looking for exact or non-exact spike locations
 		err_str = "Keyword argument 'exact' must be a boolean."
 		assert isinstance(exact, bool), err_str
 
-		if minProm is not None:
-			minProm = utl.force_pos_float(minProm, name='spike.minProm',
-				zero_ok=True, verbose=verbose)
-
-		pmin, pmax = 10, 90
-		data9010 = np.diff(np.percentile(data, [pmin, pmax]))[0]
-		# minProm = max(data9010, minProm)
-
-		wlen = utl.force_pos_int(wlen, name='epo.getSpikeIdx.wlen',
-			verbose=verbose)
-
-		window = utl.force_pos_int(window, name='epo.getSpikeIdx.window',
-			verbose=verbose)
-		window = window + 1 if ((window % 2) == 0) else window
-
-		pad = utl.force_pos_int(pad, name='spike.pad', verbose=verbose)
-
-		if verbose > 1:
+		if verbose >= 2:
 			if exact:
 				print(f"Getting Exact (non-integer) Spike Locations!")
 			else:
 				print(f"Getting Spike Locations")
 
-	############################################################################
-	##	Get Index Locations of Action Potentials
-	############################################################################
+		## Set the minimum allowable spike slope
+		minSlope = utl.force_pos_float(minSlope, name='epo.getSpikeIdx.wlen',
+			zero_ok=True, verbose=verbose)
 
-	order = int(window*.5)
-	dataMed = sig.order_filter(data, np.ones(window), order)
+		## Set spline fitting pad parameter
+		pad = utl.force_pos_int(pad, name='spike.pad', verbose=verbose)
 
-	dataNoMed = data - dataMed
+		## Check that 'window' is an integer and is odd
+		window = utl.force_pos_int(window, name='epo.getSpikeIdx.window',
+			verbose=verbose)
+		window = window + 1 if ((window % 2) == 0) else window
 
-	thresh = np.percentile(dataNoMed, 90)
+		pThresh = utl.force_pos_float(pThresh,
+			name='epo.getSpikeIdx.pThresh', verbose=verbose)
+		errStr = "Keyword argument 'pThresh' must be a percent in (0, 100)"
+		assert pThresh < 100, errStr
 
-	noMedData9010 = np.diff(np.percentile(dataNoMed, [pmin, pmax]))[0]
-	# minProm = max(noMedData9010, minProm)
-	minProm = noMedData9010
-	print(f"minProm = {minProm:.4g}mV")
-	print(f"data p90-p10 = {data9010:.4g}mV")
-	print(f"data no med p90-p10 = {noMedData9010:.4g}mV")
-
-	# grid = np.arange(len(data))
-	# smoother = intrp.UnivariateSpline(grid, data, s=int(len(data)/2.))
-	# smoothData = smoother(grid)
-
-	peakIdx, _ = sig.find_peaks(dataNoMed, threshold=thresh, distance=minISI,
-		prominence=minProm, wlen=wlen)
-
-	NPeaks = len(peakIdx)
+		maxMedDiff = utl.force_pos_float(maxMedDiff,
+			name='epo.getSpikeIdx.maxMedDiff', verbose=verbose)
 
 	############################################################################
-	##	Get half-widths, left-, and right-edges of APs
+	##	Get median subtracted data.
 	############################################################################
-	widths, _, wLeft, wRight = sig.peak_widths(data, peakIdx, rel_height=0.5)
-	wLeft = np.floor(wLeft).astype(int)
-	wRight = np.ceil(wRight).astype(int)
+
+		noMedData = data - epu.getRollPerc(data, window=window, perc=50,
+			verbose=verbose)
+
+		## Check threshold, if none, set based on data
+		if thresh is not None:
+			thresh = utl.force_float(thresh, name='epo.getSpikeIdx.thresh',
+				verbose=verbose)
+			thresh -= np.median(data)
+
+			dCounts = Counter(noMedData.ravel())
+			dVals = np.msort(list(dCounts.keys()))
+			dCDF = np.cumsum(np.asarray([dCounts[ii] for ii in dVals]))
+			dCDF = dCDF/dCDF[-1]
+			pThresh = dCDF[(dVals <= thresh).nonzero()]
+			if len(pThresh) > 0:
+				pThresh = pThresh[-1]*100.
+			else:
+				pThresh = 100.
+
+		else:
+			thresh = np.percentile(noMedData, pThresh)
+
+		## Check minimum prominence, if none, set based on data
+		if minProm is not None:
+			minProm = utl.force_pos_float(minProm, 
+				name='epo.getSpikeIdx.minProm', zero_ok=True, verbose=verbose)
+		else:
+			errStr = "pProm must be (pMin, pMax) tuple!"
+			assert (len(pProm) == 2) and isinstance(pProm, tuple), errStr
+			assert np.all([utl.force_pos_float(p, name='epo.getSpikeIdx.pProm',
+				verbose=verbose) for p in pProm]), errStr
+			assert np.all([p < 100 for p in pProm]), errStr
+			pMin, pMax = pProm
+			minProm = np.diff(np.percentile(noMedData, [pProm[0], pProm[1]]))[0]
 
 	############################################################################
-	##	Get Index/Time Locations of AP Peaks from Spline Fits
+	##	Find Minimal Allowed wlen
 	############################################################################
-	spikeIdx, spikeVals = [], []
+	with warnings.catch_warnings():
+		warnings.filterwarnings("ignore")
 
-	if verbose > 2:
-		print("Itr:\tWL - Peak - WR - Width")
+		if verbose >= 3:
+			print("Finding minimum allowable wlen")
+			print(f"Starting with T =\t{thresh:.4g}mV\nP =\t{minProm:.4g}mV")
 
-	## Iterate through peaks
-	for itr, (wl, wr) in enumerate(zip(wLeft, wRight)):
 
-		## Peak width must be > 3 indices apart and less than maxRate half-width
-		rightSize = ((wr - wl) > 3) and ((wr - wl) <= int(minISI/2.))
-		counter, maxCounter = 0, 10
-		while not rightSize:
+		## Find the maximum possible number of spikes with the given threshold
+		## and prominence
+		wLen_Max = len(noMedData)
 
-			if verbose > 2:
-				print(f"{itr}:\t Adjust {wl} - {peakIdx[itr]} - {wr} - {wr-wl}")
+		tLevel = pThresh
+		while True:
 
-			## If the width is too small, pad it to make it larger
-			if (wr - wl) <= 3:
-				if itr > 0:
-					wl = max(wl-pad, min(wRight[itr-1], wRight[itr]))
-				else:
-					wl = max(wl-pad, 0)
+			peakIdx, _ = sig.find_peaks(noMedData, height=thresh,
+				distance=minISI, prominence=minProm, wlen=wLen_Max)
 
-				if itr < NPeaks-1:
-					wr = min(wr+pad, max(wLeft[itr+1], wLeft[itr]))
-				else:
-					wr = min(wr+pad, len(data)-1)
+			peakVals = noMedData[peakIdx]
 
-			## If the width is too large, move halfway closer to the peak
-			elif (wr - wl) > int(minISI/2.):
-				if (peakIdx[itr] - wl) > int(minISI/4.):
-					wl += int((peakIdx[itr] - wl)/2.)
-				if (wr - peakIdx[itr]) > int(minISI/4.):
-					wr -= int((wr - peakIdx[itr])/2.)
-
-			## Right size yet?
-			rightSize = ((wr - wl) > 3) and ((wr - wl) < int(minISI/2.))
-
-			## Increment the counter and only try so hard.
-			counter += 1
-			if counter > maxCounter:
-				if verbose:
-					print("(getSpikeIdx) WARNING: Could not find optimal "+
-						f"spike width in {maxCounter} attempts... Moving on...")
+			if len(peakVals) < 2:
 				break
 
-		if (wr - wl) <= 3:
-			print(f"{itr}: WL", wl, wLeft[itr-2:itr+3])
-			print(f"{itr}: WR", wr, wRight[itr-2:itr+3])
+			if len(np.unique(peakVals)) < 2:
+				break
 
-		if verbose > 2:
-			print(f"{itr}:\t{wl} - {peakIdx[itr]} - {wr} - {wr-wl}")
+			oThr = filters.threshold_otsu(peakVals)
 
-		## Grid for data
-		grid = np.arange(wl, wr+.1).astype(int)
-		## Grid on which to evaluate the spline
-		finegrid = np.linspace(wl, wr, 1001)
+			lowMed = np.median(peakVals[peakVals <= oThr])
+			highMed = np.median(peakVals[peakVals > oThr])
 
-		## Fir the spline to the data on the coarse grid
-		splfit = intrp.splrep(grid, data[grid], k=3) ## CUBIC
-		## Calculate the derivative
-		dsplfit = intrp.splder(splfit)
-		## Fit the derivative to the fine grid
-		derfit = intrp.splrep(finegrid, intrp.splev(finegrid, dsplfit), k=3)
-		## Find the location of the zeros of the derivative
-		peakLoc = intrp.sproot(derfit, mest=len(finegrid))
+			if verbose >= 4:
+				print(f"Otsu Thr: {oThr:.4g} ({sum(peakVals<=oThr)} on left "+
+					f"{sum(peakVals>oThr)} on right)")
+				print(f"Low Median {lowMed:.4g}, High Median {highMed:.4g}")
 
-		## If we don't want non-integer spike locations
-		if not exact:
-			peakLoc = np.round(peakLoc).astype(int)
+			if (highMed - lowMed) < maxMedDiff:
+				break
 
-		## If there are no peaks, skip this AP
-		if len(peakLoc) == 0:
-			continue
+			tLevel += (100 - tLevel)/2.
+			thresh = np.percentile(noMedData, tLevel)
 
-		## Get the peak height
-		peakVal = intrp.splev(peakLoc, splfit)
+			if verbose >= 4:
+				print(f"The threshold level is {tLevel} ({thresh:.4g})")
 
-		## Assume the AP is at the locaiton of the largest root
-		spikeIdx.append(peakLoc[np.argmax(peakVal)])
-		spikeVals.append(np.max(peakVal))
+		NSp_Max = len(peakIdx)
+		if verbose >= 3:
+			print(f"\n{NSp_Max} Spikes Found!")
 
-	spikeIdx = np.array(spikeIdx).astype(float).squeeze()
-	spikeVals = np.array(spikeVals).astype(float).squeeze()
+		if NSp_Max == 0:
+			return [], []
 
-	## I DON'T UNDERSTAND THIS - CLEARLY SOME OLD PATCH...
-	try:
-		_ = len(spikeIdx)
-	except:
-		spikeIdx = np.array([spikeIdx]).astype(int)
+		## Find the number of spikes found when wlen corresponds to the minimum
+		## allowed slope of an AP
+		wLen_MinSlope = int(np.ceil(minProm/minSlope/dt))
+		if wLen_MinSlope % 2 == 0:
+			wLen_MinSlope += 1
 
-	try:
-		_ = len(spikeVals)
-	except:
-		spikeVals = np.array([spikeVals]).astype(int)
+		if verbose >= 3:
+			print(f"wlen for min slope = {wLen_MinSlope}")
 
-	## Return indices and values
-	return spikeIdx, spikeVals
+		tLevel = pThresh
+		thresh = np.percentile(noMedData, pThresh)
+		while True:
+
+			peakIdx, _ = sig.find_peaks(noMedData, height=thresh,
+				distance=minISI, prominence=minProm, wlen=wLen_MinSlope)
+
+			peakVals = noMedData[peakIdx]
+
+			if len(peakVals) < 2:
+				break
+
+			if len(np.unique(peakVals)) < 2:
+				break
+
+			oThr = filters.threshold_otsu(peakVals)
+
+			lowMed = np.median(peakVals[peakVals <= oThr])
+			highMed = np.median(peakVals[peakVals > oThr])
+
+			if verbose >= 4:
+				print(f"Otsu Thr: {oThr:.4g} ({sum(peakVals<=oThr)} on left "+
+					f"{sum(peakVals>oThr)} on right)")
+				print(f"Low Median {lowMed:.4g}, High Median {highMed:.4g}")
+
+			if (highMed - lowMed) < maxMedDiff:
+				break
+
+			tLevel += (100 - tLevel)/2.
+			thresh = np.percentile(noMedData, tLevel)
+
+			if verbose >= 4:
+				print(f"The threshold level is {tLevel} ({thresh:.4g})")
+
+		NSp_MinSlope = len(peakIdx)
+		if verbose >= 3:
+			print(f"\n{NSp_MinSlope} Spikes Found!")
+
+
+		## If the min slope and max wlen yield the same number of spikes,
+		## search downwards to find the minimum wlen that gives the same number.
+		if NSp_Max == NSp_MinSlope:
+			if verbose >= 3:
+				print(f"wLen_MinSlope yields same no. of spikes as wLen_Max!")
+
+			wLen = wLen_MinSlope
+			with warnings.catch_warnings():
+				warnings.filterwarnings("ignore")
+				peakWids = sig.peak_widths(noMedData, peakIdx,
+					wlen=wLen_MinSlope, rel_height=1.)
+
+			leftWids, rightWids = peakIdx-peakWids[2], peakWids[3]-peakIdx
+
+			NSpLeft = np.sum(leftWids <= (wLen-1)/2.)
+			NSpRight = np.sum(rightWids <= (wLen-1)/2.)
+
+			while np.minimum(NSpLeft, NSpRight) == NSp_Max:
+
+				wLen -= 2
+
+				NSpLeft = np.sum(leftWids <= (wLen-1)/2.)
+				NSpRight = np.sum(rightWids <= (wLen-1)/2.)
+
+			wLen += 2
+
+			if verbose >= 3:
+				print(f"Determined that the minimal spike width is {wLen}")
+
+		## Otherwise, look at all smaller wlens and find the "most stable" 
+		## number of spikes, i.e. the number that occurs most often
+		else:
+			if verbose >= 3:
+				print(f"wLen_MinSlope yields a different number of spikes...")
+
+			wLenArr = np.arange(3, wLen_MinSlope+1, 2)
+			NSpArr = np.zeros_like(wLenArr)
+
+			for ii, wLen in enumerate(wLenArr):
+
+				if ((ii % 10) == 0) and (verbose >= 4):
+					print(f"{ii}: wLen = {wLen}")
+
+				tLevel = pThresh
+				thresh = np.percentile(noMedData, pThresh)
+				while True:
+
+					peakIdx, _ = sig.find_peaks(noMedData, height=thresh,
+						distance=minISI, prominence=minProm, wlen=wLen)
+
+					peakVals = noMedData[peakIdx]
+
+					if len(peakVals) < 2:
+						break
+
+					if len(np.unique(peakVals)) < 2:
+						break
+						
+					oThr = filters.threshold_otsu(peakVals)
+
+					lowMed = np.median(peakVals[peakVals <= oThr])
+					highMed = np.median(peakVals[peakVals > oThr])
+
+					if verbose >= 5:
+						print(f"Otsu Thr: {oThr:.4g} ({sum(peakVals<=oThr)} " +
+							f"on left {sum(peakVals>oThr)} on right)")
+						print(f"Low Median {lowMed:.4g}, High Median " +
+							f"{highMed:.4g}")
+
+					if (highMed - lowMed) < maxMedDiff:
+						break
+
+					tLevel += (100 - tLevel)/2.
+					thresh = np.percentile(noMedData, tLevel)
+
+					if verbose >= 5:
+						print(f"The threshold level is {tLevel} ({thresh:.4g})")
+
+				NSpArr[ii] = len(peakIdx)
+
+			NSp_Mode = st.mode(NSpArr).mode[0]
+
+			wLen = wLenArr[(NSpArr == NSp_Mode).nonzero()[0][0]]
+
+			if verbose >= 3:
+				print(f"NSp_Mode = {NSp_Mode} giving wLen = {wLen}")
+
+		## Using the optimized parameters now, find the peakIdx
+		tLevel = pThresh
+		thresh = np.percentile(noMedData, pThresh)
+		while True:
+
+			peakIdx, _ = sig.find_peaks(noMedData, height=thresh,
+				distance=minISI, prominence=minProm, wlen=wLen)
+
+			peakVals = noMedData[peakIdx]
+
+			if len(peakVals) < 2:
+				break
+
+			if len(np.unique(peakVals)) < 2:
+				break
+			oThr = filters.threshold_otsu(peakVals)
+
+			lowMed = np.median(peakVals[peakVals <= oThr])
+			highMed = np.median(peakVals[peakVals > oThr])
+
+			if verbose >= 4:
+				print(f"Otsu Thr: {oThr:.4g} ({sum(peakVals<=oThr)} on left "+
+					f"{sum(peakVals>oThr)} on right)")
+				print(f"Low Median {lowMed:.4g}, High Median {highMed:.4g}")
+
+			if (highMed - lowMed) < maxMedDiff:
+				break
+
+			tLevel += (100 - tLevel)/2.
+			thresh = np.percentile(noMedData, tLevel)
+
+			if verbose >= 4:
+				print(f"The threshold level is {tLevel} ({thresh:.4g})")
+
+		NPeaks = len(peakIdx)
+
+		if verbose >= 2:
+			print(f"{NPeaks} Peaks Found...")
+		if verbose >= 3:
+			print(f"Thresh = {thresh:.4g}\tProm = {minProm:.4g}\twLen = {wLen}")
+
+	############################################################################
+	##	Get InExact Peak Locations, If Requested
+	############################################################################
+	if not exact:
+		spikeIdx = np.array(peakIdx).astype(float).squeeze()
+		spikeVals = np.array(data[peakIdx]).astype(float).squeeze()
+
+		## If spikeIdx is a single number, make it an array
+		try:
+			_ = len(spikeIdx)
+		except:
+			spikeIdx = np.array([spikeIdx]).astype(int)
+
+		try:
+			_ = len(spikeVals)
+		except:
+			spikeVals = np.array([spikeVals]).astype(int)
+
+		## Return indices and values
+		return spikeIdx, spikeVals
+
+	############################################################################
+	##	Get Exact Peak Locations, If Requested
+	############################################################################
+	else:
+		with warnings.catch_warnings():
+			warnings.filterwarnings("ignore")
+			widths, _, wLeft, wRight = sig.peak_widths(data, peakIdx,
+				rel_height=0.5)
+			wLeft = np.floor(wLeft).astype(int)
+			wRight = np.ceil(wRight).astype(int)
+		
+		spikeIdx, spikeVals = [], []
+
+		if verbose >= 4:
+			print(f"Itr:\tWL - PEAK - WR - Width")
+
+		for itr, (wl, wr) in enumerate(zip(wLeft, wRight)):
+
+			rightSize = ((wr-wl) > 3) and ((wr-wl) <= int(minISI/2.))
+			
+			counter, maxCounter = 0, 10
+			while not rightSize:
+
+				if verbose >= 4:
+					print(f"{itr}:\tAdjust {wl} - {peakIdx[itr]} - "+
+						f"{wr} - {wr-wl}")
+
+				## If the width is too small, pad it to make it larger
+				if (wr - wl) <= 3:
+					if itr > 0:
+						wl = max(wl-pad, min(wRight[itr-1], wRight[itr]))
+					else:
+						wl = max(wl-pad, 0)
+
+					if itr < NPeaks-1:
+						wr = min(wr+pad, max(wLeft[itr+1], wLeft[itr]))
+					else:
+						wr = min(wr+pad, len(data)-1)
+
+				## If the width is too large, move halfway closer in to the peak
+				elif (wr - wl) > int(minISI/2.):
+					if (peakIdx[itr] - wl) > int(minISI/4.):
+						wl += int((peakIdx[itr] - wl)/2.)
+					if (wr - peakIdx[itr]) > int(minISI/4.):
+						wr -= int((wr - peakIdx[itr])/2.)
+
+				## Check if right size
+				rightSize = ((wr-wl) > 3) and ((wr-wl) <= int(minISI/2.))
+
+				## Increment the counter and only try so hard
+				counter += 1
+				if counter > maxCounter:
+					if verbose >= 3:
+						print("[epo.GetSpikeIdx]: WARNING: Could not find "+
+							f"optimal spike width in {maxCounter} attempts...")
+					break
+
+			## Grid for the data
+			grid = np.arange(wl, wr+.1).astype(int)
+			## Grid on which to evaluate the spline
+			finegrid = np.linspace(wl, wr, 1001)
+
+			## Fit the spline to the data on the coarse grid
+			splfit = intrp.splrep(grid, data[grid], k=3) ## CUBIC
+			## Calculate the derivative
+			dsplfit = intrp.splder(splfit)
+			## Fit the derivative to the fine grid
+			derfit = intrp.splrep(finegrid, intrp.splev(finegrid, dsplfit), k=3)
+			## Find the location of the zeros of the derivative
+			peakLoc = intrp.sproot(derfit, mest=len(finegrid))
+
+
+			## If there are no peaks, skip this AP
+			if len(peakLoc) == 0:
+				continue
+
+			## Get the peak height
+			peakVal = intrp.splev(peakLoc, splfit)
+
+			## Assume the AP is at the locaiton of the largest root
+			spikeIdx.append(peakLoc[np.argmax(peakVal)])
+			spikeVals.append(np.max(peakVal))
+
+		spikeIdx = np.array(spikeIdx).astype(float).squeeze()
+		spikeVals = np.array(spikeVals).astype(float).squeeze()
+
+		## If spikeIdx is a single number, make it an array
+		try:
+			_ = len(spikeIdx)
+		except:
+			spikeIdx = np.array([spikeIdx]).astype(int)
+
+		try:
+			_ = len(spikeVals)
+		except:
+			spikeVals = np.array([spikeVals]).astype(int)
+
+		## Return indices and values
+		return spikeIdx, spikeVals
 
 
 ################################################################################

@@ -22,6 +22,7 @@
 from copy import deepcopy
 import numpy as np
 from scipy.optimize import curve_fit
+import scipy.signal as sig
 
 import Objectives.Electrophysiology.ephys_objs as epo
 
@@ -1143,6 +1144,69 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 		err_str = f"Invalid value for keyword 'protocol'... Protocol={protocol}"
 		err_str += " is not allowed (only expect depol step(s))."
 		raise ValueError(err_str)
+
+
+################################################################################
+## Get Rolling Percentile of Data
+################################################################################
+def getRollPerc(data, window=100, perc=50., verbose=0, edgeCorrect=True):
+
+	############################################################################
+	##	Check Inputs, Keyword Arguments
+	############################################################################
+	if True:
+
+		## Check the verbosity keyword
+		verbose = utl.force_pos_int(verbose, name='epu.getRollPerc.verbose', 
+			zero_ok=True, verbose=verbose)
+
+		## Check the type and shape of the data
+		data = utl.force_float_arr(data, name='epu.getRollPerc.data',
+			verbose=verbose).squeeze()
+
+		err_str = "Input argument 'data' must be 1D array."
+		err_str += f" (data.ndim = {data.ndim})"
+		assert data.ndim == 1, err_str
+
+		## Check that 'window' is an integer and is odd
+		window = utl.force_pos_int(window, name='epu.getRollPerc.window',
+			verbose=verbose)
+		window = window + 1 if ((window % 2) == 0) else window
+
+		perc = utl.force_pos_float(perc, name="epu.getRollPerc.perc",
+			verbose=verbose)
+		errStr = "Keyword argument 'perc' must be a percentage (0, 100)."
+		assert perc < 100, errStr
+
+		errStr = "Keyword argument 'edgeCorrect' must be a boolean."
+		assert isinstance(edgeCorrect, bool), errStr
+
+	############################################################################
+	##	Calculate Percentile
+	############################################################################
+		order = int(window*perc/100.)
+
+		## Get the rolling median
+		medData = sig.order_filter(data, np.ones(window), order)
+
+		if edgeCorrect:
+			## Edge correct the median
+			windArr = np.arange(window)
+			oddArr = (np.arange(window) + np.arange(window)%2. + 1)
+			leftEnd, rightEnd = [], []
+			for (ii, wd) in zip(windArr, oddArr.astype(int)):
+				
+				leftEnd.append(sig.order_filter(data[:window*2], np.ones(wd),
+					int((wd-1)/2))[ii])
+
+				rightEnd.append(sig.order_filter(data[-window*2-1:],
+					np.ones(wd), int((wd-1)/2))[-(window-ii)-1])
+
+			medData[:window] = np.array(leftEnd)
+			medData[-window:] = np.array(rightEnd)
+
+		## Get rolling percentile array
+		return medData
 
 
 ################################################################################

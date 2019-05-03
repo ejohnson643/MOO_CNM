@@ -742,6 +742,8 @@ def getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat, key=None,
 		except KeyError:
 			dataFeat['RI'][key] = {}
 
+		print(dataFeat['RI'], key, dataFeat['RI'][key])
+
 		dataFeat['RI'][key] = deepcopy(err)
 
 	return dataFeat
@@ -1191,14 +1193,15 @@ def getRollPerc(data, window=100, perc=50., verbose=0, edgeCorrect=True):
 
 		if edgeCorrect:
 			## Edge correct the median
-			windArr = np.arange(window)
-			oddArr = (np.arange(window) + np.arange(window)%2. + 1)
+			windArr = np.arange(window).astype(int)
+			oddArr = (windArr + windArr%2. + 1).astype(int)
 			leftEnd, rightEnd = [], []
-			for (ii, wd) in zip(windArr, oddArr.astype(int)):
+			for (ii, wd) in zip(windArr, oddArr):
 				
 				leftEnd.append(sig.order_filter(data[:window*2], np.ones(wd),
 					int((wd-1)/2))[ii])
 
+				wd = oddArr[-1]-wd+1
 				rightEnd.append(sig.order_filter(data[-window*2-1:],
 					np.ones(wd), int((wd-1)/2))[-(window-ii)-1])
 

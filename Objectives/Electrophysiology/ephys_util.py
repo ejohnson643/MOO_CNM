@@ -1196,7 +1196,12 @@ def getRollPerc(data, window=100, perc=50., verbose=0, edgeCorrect=True):
 			windArr = np.arange(window).astype(int)
 			oddArr = (windArr + windArr%2. + 1).astype(int)
 			leftEnd, rightEnd = [], []
+			counter = 0
 			for (ii, wd) in zip(windArr, oddArr):
+
+				if verbose >= 3:
+					if (counter + 1) % 20 == 0.:
+						print(f"{counter+1}/{len(windArr)}: {ii}, {wd}")
 				
 				leftEnd.append(sig.order_filter(data[:window*2], np.ones(wd),
 					int((wd-1)/2))[ii])
@@ -1204,6 +1209,8 @@ def getRollPerc(data, window=100, perc=50., verbose=0, edgeCorrect=True):
 				wd = oddArr[-1]-wd+1
 				rightEnd.append(sig.order_filter(data[-window*2-1:],
 					np.ones(wd), int((wd-1)/2))[-(window-ii)-1])
+
+				counter += 1
 
 			medData[:window] = np.array(leftEnd)
 			medData[-window:] = np.array(rightEnd)

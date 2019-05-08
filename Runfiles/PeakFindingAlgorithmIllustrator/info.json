@@ -1,0 +1,30 @@
+{
+	"modelDir":"./Models/HH_Test/",
+	"logDir":"./Logs/HH_Test/",
+	"cpDir":"./Checkpoints/HH_Test/",
+	
+	"objectives":{
+		"Spikes":{
+			"exact":true
+		},
+		"ISI":{
+			"depol":"thirds"
+		},
+		"Amp":{
+			"fit":"exp"
+		},
+		"PSD":{
+			"fit":"exp"
+		},
+		"RI":{
+			"type":"RI"
+		}
+	},
+
+	"data":{
+		"genNewFeats":true,
+		"dates":{
+			"08/12/2010":null
+		}
+	}
+}

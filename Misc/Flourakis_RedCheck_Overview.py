@@ -363,7 +363,6 @@ if __name__ == "__main__":
 				# print(f"{key}: UNKNOWN PROTOCOL")
 				pass
 
-
 	############################################################################
 	## Plot MAYBE
 	############################################################################
@@ -1028,14 +1027,27 @@ if __name__ == "__main__":
 ## Show N Peaks As Function of Threshold
 ################################################################################	
 	
+	plt.close('all')
+
 	pThreshArr = np.arange(50, 100)
+	threshArr = np.percentile(noMed22, pThreshArr)
 	nPeaks22 = np.zeros_like(pThreshArr)
-	for pThresh in pThreshArr:
+	peakValsArr22 = []
+	for ii, pThresh in enumerate(pThreshArr):
 
 		thresh22 = np.percentile(noMed22, pThresh)
 
 		peakIdx, _ = sig.find_peaks(noMed22, height=thresh22, distance=minISI,
 			prominence=prom22, wlen=wLenMax22)
+
+		nPeaks22[ii] = len(peakIdx)
+
+		peakValsArr22.append(noMed22[peakIdx])
+
+	fig11, [ax11_1, ax11_2] = plt.subplots(2, 1, figsize=(12, 8))
+
+	ax11_1.scatter(threshArr, nPeaks22)
+
 
 ################################################################################
 ## Show plots!

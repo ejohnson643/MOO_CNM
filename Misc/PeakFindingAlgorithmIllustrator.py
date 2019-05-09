@@ -144,7 +144,8 @@ if __name__ == "__main__":
 	plot_fig6_voltageHists = False
 	plot_fig7_NPeaks_vs_thresh_prom = False
 	plot_fig8_NPeaks_vs_wlen = False
-	plot_fig9_NPeak_vs_ALL = True
+	plot_fig9_NPeak_vs_ALL = False
+	plot_fig10_FindStablePeaks_with_Prom_wlen = True
 
 	infoDir = "./Runfiles/PeakFindingAlgorithmIllustrator/"
 
@@ -907,7 +908,6 @@ if __name__ == "__main__":
 		fig8Path = os.path.join(figDir, fig8Name)
 		fig8.savefig(fig8Path, format='pdf', dpi=600)
 
-	
 ################################################################################
 ## Show Dependence of Num Peaks on wlen, Thresh, Prom
 ################################################################################
@@ -1045,6 +1045,106 @@ if __name__ == "__main__":
 		fig10Name = "NPeaks_vs_ALL_RATIO.pdf"
 		fig10Path = os.path.join(figDir, fig10Name)
 		fig10.savefig(fig10Path, format='pdf', dpi=600)
+
+################################################################################
+## Show How We Can Walk Up Prom + wlen to Find Stable Params
+################################################################################
+	if plot_fig10_FindStablePeaks_with_Prom_wlen:
+
+		tPercArr = np.arange(75, 100)
+		pPercArr = np.arange(75, 100)
+
+		minSlope = 20
+
+		fig10, ax10 = plt.subplots(3, 3, figsize=(12, 12))
+
+		for figNo in range(3):
+
+			if figNo == 0:
+				data = noMed22
+				time = tGrid22
+				recNo = 22
+			elif figNo == 1:
+				data = noMed23
+				time = dpTGrid23
+				recNo = 23
+			else:
+				data = noMed24
+				time = dpTGrid24
+				recNo = 24
+
+			threshArr = np.percentile(data, tPercArr)
+
+			minPromArr = np.asarray([np.diff(np.percentile(data, [1, p]))[0]
+				for p in pPercArr])
+			minPromArr = np.unique(minPromArr)
+
+			wlenMinArr = minPromArr/minSlope/dt
+
+			NPeaks = []
+			peakVals = []
+			peakIdx = []
+
+			for ii, (mP, wl) in enumerate(zip(minPromArr, wlenMinArr)):
+
+				pIdx, _ = sig.find_peaks(data, height=threshArr[0],
+					prominence=mP, wlen=wl, distance=minISI, width=0)
+
+				peakIdx.append(pIdx)
+				peakVals.append(data[pIdx])
+				NPeaks.append(len(pIdx))
+
+			print(max(set(NPeaks), key=NPeaks.count))
+			print(f"Mode: {st.mode(NPeaks).mode[0]}")
+
+			ax10[figNo, 0].scatter(minPromArr, NPeaks)
+
+			newPeakVals = []
+			for ii, mP in enumerate(minPromArr):
+				for pV in peakVals[ii]:
+					newPeakVals.append([mP, pV])
+
+			peakValsDF = pd.DataFrame(newPeakVals, columns=['mP', 'pV'])
+
+			box10 = sns.boxplot(x='mP', y='pV', data=peakValsDF,
+				ax=ax10[figNo, 1], notch=True)
+
+			ax10[figNo, 0].set_xlabel(r"$Prom_{min}$")
+			ax10[figNo, 0].set_ylabel(f"Recording {recNo}\nNo. Peaks")
+
+			ax10[figNo, 1].set_xlabel(r"$Prom_{min}$")
+			ax10[figNo, 1].set_ylabel(r"Peak Heights")
+			ax10[figNo, 1].set_xticks(ax10[figNo, 0].get_xticks())
+			ax10[figNo, 1].set_xticklabels(ax10[figNo, 0].get_xticklabels())
+
+			wlenContArr = [np.arange(3, wl, 2)[::-1] for wl in wlenMinArr]
+			NPeaks_Big = []
+			for ii, mP in enumerate(minPromArr):
+				NPeaksList = []
+				for wl in wlenContArr[ii]:
+					pIdx, _ = sig.find_peaks(data, distance=minISI,
+						height=threshArr[0], prominence=mP, wlen=wl)
+					NPeaksList.append(len(pIdx))
+				NPeaks_Big.append(NPeaksList)
+
+			for wl, NP in zip(wlenContArr, NPeaks_Big):
+				ax10[figNo, 2].scatter(wl, NP)
+
+			AllPeaks = [item for sublist in NPeaks_Big for item in sublist]
+			print(f"Mode = {st.mode(AllPeaks)}")
+
+			for NP in NPeaks_Big:
+				print(st.mode(NP))
+
+			ax10[figNo, 2].set_xlabel(r"$wlen$")
+			ax10[figNo, 2].set_ylabel("No. Peaks")
+
+
+		fig10.tight_layout()
+
+		fig10Name = "NPeaks_vs_WLEN_and_PROM.pdf"
+		fig10Path = os.path.join(figDir, fig10Name)
+		fig10.savefig(fig10Path, format='pdf')
 
 
 

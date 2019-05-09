@@ -136,7 +136,7 @@ if __name__ == "__main__":
 	gen_new_data = True
 	check_for_data = True
 
-	plotEveryone = False
+	plotEveryone = True
 
 	infoDir = "./Runfiles/RedCheck_Overview/"
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
 
-		if dateNo != 0:
+		if dateNo != 2:
 			continue
 
 		# dateStr = "01/04/2011"
@@ -229,8 +229,8 @@ if __name__ == "__main__":
 
 			print(f"\nKey = {key}\n")
 
-			if key > 24:
-				continue
+			# if key > 24:
+			# 	continue
 
 			## IF I WANT TO GENERATE NEW DATA...
 			## Delete all the entries that exist already
@@ -276,6 +276,9 @@ if __name__ == "__main__":
 			## Load the data, hdr, get the protocol.
 			data = dataDict[dateStr][key]['data']
 			hdr = dataDict[dateStr][key]['header']
+
+			print(f"Rec Time = {hdr['lFileStartDate']}, "+
+				f"{hdr['lFileStartTime']/60./60.:.2f}\n")
 
 			if key == 22:
 				data22 = data.copy()
@@ -540,513 +543,513 @@ if __name__ == "__main__":
 		pkl.dump(dataFeat, f)
 
 
-################################################################################
-## Show plots!
-################################################################################
+# ################################################################################
+# ## Show plots!
+# ################################################################################
 
-	dt = 0.001
-	maxRate = 100.
-	minISI = int(1./dt/maxRate)
+# 	dt = 0.001
+# 	maxRate = 100.
+# 	minISI = int(1./dt/maxRate)
 
-	data22 = data22[:, 0].squeeze()
+# 	data22 = data22[:, 0].squeeze()
 
-	window22 = int(len(data22)/100)
-	window22 = window22 + 1 if (window22 % 2 == 0) else window22
+# 	window22 = int(len(data22)/100)
+# 	window22 = window22 + 1 if (window22 % 2 == 0) else window22
 
-	med22 = epu.getRollPerc(data22, window=int(window22), perc=50)
-	noMed22 = data22-med22
+# 	med22 = epu.getRollPerc(data22, window=int(window22), perc=50)
+# 	noMed22 = data22-med22
 
-	tGrid22 = np.arange(len(data22))*dt
+# 	tGrid22 = np.arange(len(data22))*dt
 
-	data23 = data23[:, 0].squeeze()
-	old23 = data23.copy()
-	data23, dpIdx, dpI = epu.getDepolIdx(data23, hdr,
-		protocol=EPHYS_PROT_DEPOLSTEP)
+# 	data23 = data23[:, 0].squeeze()
+# 	old23 = data23.copy()
+# 	data23, dpIdx, dpI = epu.getDepolIdx(data23, hdr,
+# 		protocol=EPHYS_PROT_DEPOLSTEP)
 
-	window23 = int(len(data23)/100)
-	window23 = window23 + 1 if (window23 % 2 == 0) else window23
+# 	window23 = int(len(data23)/100)
+# 	window23 = window23 + 1 if (window23 % 2 == 0) else window23
 
-	med23 = epu.getRollPerc(data23, window=int(window23), perc=50)
-	noMed23 = data23-med23
+# 	med23 = epu.getRollPerc(data23, window=int(window23), perc=50)
+# 	noMed23 = data23-med23
 
-	tGrid23 = np.arange(len(data23))*dt
+# 	tGrid23 = np.arange(len(data23))*dt
 
-	data24 = data24[:, 0].squeeze()
-	old24 = data24.copy()
-	data24, dpIdx, dpI = epu.getDepolIdx(data24, hdr,
-		protocol=EPHYS_PROT_DEPOLSTEP)
+# 	data24 = data24[:, 0].squeeze()
+# 	old24 = data24.copy()
+# 	data24, dpIdx, dpI = epu.getDepolIdx(data24, hdr,
+# 		protocol=EPHYS_PROT_DEPOLSTEP)
 
-	window24 = int(len(data24)/100)
-	window24 = window24 + 1 if (window24 % 2 == 0) else window24
+# 	window24 = int(len(data24)/100)
+# 	window24 = window24 + 1 if (window24 % 2 == 0) else window24
 
-	med24 = epu.getRollPerc(data24, window=int(window24), perc=50)
-	noMed24 = data24-med24
+# 	med24 = epu.getRollPerc(data24, window=int(window24), perc=50)
+# 	noMed24 = data24-med24
 
-	tGrid24 = np.arange(len(data24))*dt
+# 	tGrid24 = np.arange(len(data24))*dt
 
 
-	wLenMax22, wLenMax23, wLenMax24 = len(noMed22), len(noMed23), len(noMed24)
-	t22, t23 = np.percentile(noMed22, 90), np.percentile(noMed23, 90)
-	t24 = np.percentile(noMed24, 90)
-	prom22 = np.diff(np.percentile(noMed22, [1, 90]))[0]
-	prom23 = np.diff(np.percentile(noMed23, [1, 90]))[0]
-	prom24 = np.diff(np.percentile(noMed24, [1, 90]))[0]
+# 	wLenMax22, wLenMax23, wLenMax24 = len(noMed22), len(noMed23), len(noMed24)
+# 	t22, t23 = np.percentile(noMed22, 90), np.percentile(noMed23, 90)
+# 	t24 = np.percentile(noMed24, 90)
+# 	prom22 = np.diff(np.percentile(noMed22, [1, 90]))[0]
+# 	prom23 = np.diff(np.percentile(noMed23, [1, 90]))[0]
+# 	prom24 = np.diff(np.percentile(noMed24, [1, 90]))[0]
 
-################################################################################
-## Show Median of 22
-################################################################################
+# ################################################################################
+# ## Show Median of 22
+# ################################################################################
 
-	fig1, [ax1, ax2] = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+# 	fig1, [ax1, ax2] = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
 
-	ax1.plot(tGrid22, data22, label='Data')
-	ax1.plot(tGrid22, med22, label='Median Filter')
+# 	ax1.plot(tGrid22, data22, label='Data')
+# 	ax1.plot(tGrid22, med22, label='Median Filter')
 
-	ax2.plot(tGrid22, noMed22, label='Median-Subtracted Data')
+# 	ax2.plot(tGrid22, noMed22, label='Median-Subtracted Data')
 
-	ax1.set_ylabel("Voltage (mV)")
-	ax1.legend()
-	ax1.set_title(f"{date}: Rec 22")
+# 	ax1.set_ylabel("Voltage (mV)")
+# 	ax1.legend()
+# 	ax1.set_title(f"{date}: Rec 22")
 
-	ax2.set_xlabel("Time (s)")
-	ax2.set_ylabel("Voltage (mV)")
-	ax2.legend()
+# 	ax2.set_xlabel("Time (s)")
+# 	ax2.set_ylabel("Voltage (mV)")
+# 	ax2.legend()
 
-	fig1.tight_layout()
+# 	fig1.tight_layout()
 
-################################################################################
-## Show Median of 23
-################################################################################
+# ################################################################################
+# ## Show Median of 23
+# ################################################################################
 
-	fig2, [ax2_1, ax2_2] = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+# 	fig2, [ax2_1, ax2_2] = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
 
-	ax2_1.plot(tGrid23, data23, label='Data')
-	ax2_1.plot(tGrid23, med23, label='Median Filter')
+# 	ax2_1.plot(tGrid23, data23, label='Data')
+# 	ax2_1.plot(tGrid23, med23, label='Median Filter')
 
-	ax2_2.plot(tGrid23, noMed23, label='Median-Subtracted Data')
+# 	ax2_2.plot(tGrid23, noMed23, label='Median-Subtracted Data')
 
-	ax2_2.hlines(y=np.percentile(noMed23, 90), xmin=0, xmax=10)
+# 	ax2_2.hlines(y=np.percentile(noMed23, 90), xmin=0, xmax=10)
 
-	ax2_1.set_ylabel("Voltage (mV)")
-	ax2_1.legend()
-	ax2_1.set_title(f"{date}: Rec 23")
+# 	ax2_1.set_ylabel("Voltage (mV)")
+# 	ax2_1.legend()
+# 	ax2_1.set_title(f"{date}: Rec 23")
 
-	ax2_2.set_xlabel("Time (s)")
-	ax2_2.set_ylabel("Voltage (mV)")
-	ax2_2.legend()
+# 	ax2_2.set_xlabel("Time (s)")
+# 	ax2_2.set_ylabel("Voltage (mV)")
+# 	ax2_2.legend()
 
-	fig2.tight_layout()
+# 	fig2.tight_layout()
 
-################################################################################
-## Show Median Edge Corrections
-################################################################################
+# ################################################################################
+# ## Show Median Edge Corrections
+# ################################################################################
 	
-	fig3, [[ax3_1, ax3_2], [ax3_3, ax3_4]] = plt.subplots(2, 2, figsize=(12, 8))
+# 	fig3, [[ax3_1, ax3_2], [ax3_3, ax3_4]] = plt.subplots(2, 2, figsize=(12, 8))
 
-	rawMed22 = sig.order_filter(data22, np.ones(window22), int((window22-1)/2))
+# 	rawMed22 = sig.order_filter(data22, np.ones(window22), int((window22-1)/2))
 
-	cmap = sns.color_palette()
+# 	cmap = sns.color_palette()
 
-	xlimMin = -.1
-	xlimMax = 21.
-	xlimPad = .3
-
-
-	ax3_1.plot(tGrid22, data22, label='Data')
-	ax3_1.plot(tGrid22, rawMed22, label='No Edge Correction', color=cmap[1])
-	ax3_1.plot(tGrid22, med22, label='Edge-Corrected Median', color=cmap[2])
-
-	ax3_1.set_xlim(xlimMin, xlimPad)
-	ax3_1.legend(fontsize=10)
-	ax3_1.set_ylabel('Voltage (mV)')
-
-	ax3_3.plot(tGrid22, data22-rawMed22, label='No Edge Correction',
-		color=cmap[1])
-	ax3_3.plot(tGrid22, data22-med22, label='Edge-Corrected Median',
-		color=cmap[2])
-
-	ax3_3.set_xlim(xlimMin, xlimPad)
-	ax3_3.legend(fontsize=10)
-	ax3_3.set_ylabel('Voltage (mV)')
-
-	ax3_2.plot(tGrid22, data22, label='Data')
-	ax3_2.plot(tGrid22, rawMed22, label='No Edge Correction', color=cmap[1])
-	ax3_2.plot(tGrid22, med22, label='Edge-Corrected Median', color=cmap[2])
-
-	ax3_2.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
-	ax3_2.legend(fontsize=10)
-	ax3_2.set_ylabel('Voltage (mV)')
-
-	ax3_4.plot(tGrid22, data22-rawMed22, label='No Edge Correction',
-		color=cmap[1])
-	ax3_4.plot(tGrid22, data22-med22, label='Edge-Corrected Median',
-		color=cmap[2])
-
-	ax3_4.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
-	ax3_4.legend(fontsize=10)
-	ax3_4.set_ylabel('Voltage (mV)')
-
-	fig3.suptitle(f"{date}: Rec 22")
-
-	fig3.tight_layout()
+# 	xlimMin = -.1
+# 	xlimMax = 21.
+# 	xlimPad = .3
 
 
+# 	ax3_1.plot(tGrid22, data22, label='Data')
+# 	ax3_1.plot(tGrid22, rawMed22, label='No Edge Correction', color=cmap[1])
+# 	ax3_1.plot(tGrid22, med22, label='Edge-Corrected Median', color=cmap[2])
 
-	fig4, [[ax4_1, ax4_2], [ax4_3, ax4_4]] = plt.subplots(2, 2, figsize=(12, 8))
+# 	ax3_1.set_xlim(xlimMin, xlimPad)
+# 	ax3_1.legend(fontsize=10)
+# 	ax3_1.set_ylabel('Voltage (mV)')
 
-	rawMed23 = sig.order_filter(data23, np.ones(window23), int((window23-1)/2))
+# 	ax3_3.plot(tGrid22, data22-rawMed22, label='No Edge Correction',
+# 		color=cmap[1])
+# 	ax3_3.plot(tGrid22, data22-med22, label='Edge-Corrected Median',
+# 		color=cmap[2])
 
-	cmap = sns.color_palette()
+# 	ax3_3.set_xlim(xlimMin, xlimPad)
+# 	ax3_3.legend(fontsize=10)
+# 	ax3_3.set_ylabel('Voltage (mV)')
 
-	xlimMin = -.1
-	xlimMax = 10.
-	xlimPad = .3
+# 	ax3_2.plot(tGrid22, data22, label='Data')
+# 	ax3_2.plot(tGrid22, rawMed22, label='No Edge Correction', color=cmap[1])
+# 	ax3_2.plot(tGrid22, med22, label='Edge-Corrected Median', color=cmap[2])
+
+# 	ax3_2.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
+# 	ax3_2.legend(fontsize=10)
+# 	ax3_2.set_ylabel('Voltage (mV)')
+
+# 	ax3_4.plot(tGrid22, data22-rawMed22, label='No Edge Correction',
+# 		color=cmap[1])
+# 	ax3_4.plot(tGrid22, data22-med22, label='Edge-Corrected Median',
+# 		color=cmap[2])
+
+# 	ax3_4.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
+# 	ax3_4.legend(fontsize=10)
+# 	ax3_4.set_ylabel('Voltage (mV)')
+
+# 	fig3.suptitle(f"{date}: Rec 22")
+
+# 	fig3.tight_layout()
 
 
-	ax4_1.plot(tGrid23, data23, label='Data')
-	ax4_1.plot(tGrid23, rawMed23, label='No Edge Correction', color=cmap[1])
-	ax4_1.plot(tGrid23, med23, label='Edge-Corrected Median', color=cmap[2])
 
-	ax4_1.set_xlim(xlimMin, xlimPad)
-	ax4_1.legend(fontsize=10)
-	ax4_1.set_ylabel('Voltage (mV)')
+# 	fig4, [[ax4_1, ax4_2], [ax4_3, ax4_4]] = plt.subplots(2, 2, figsize=(12, 8))
 
-	ax4_3.plot(tGrid23, data23-rawMed23, label='No Edge Correction',
-		color=cmap[1])
-	ax4_3.plot(tGrid23, data23-med23, label='Edge-Corrected Median',
-		color=cmap[2])
+# 	rawMed23 = sig.order_filter(data23, np.ones(window23), int((window23-1)/2))
 
-	ax4_3.set_xlim(xlimMin, xlimPad)
-	ax4_3.legend(fontsize=10)
-	ax4_3.set_ylabel('Voltage (mV)')
+# 	cmap = sns.color_palette()
 
-	ax4_2.plot(tGrid23, data23, label='Data')
-	ax4_2.plot(tGrid23, rawMed23, label='No Edge Correction', color=cmap[1])
-	ax4_2.plot(tGrid23, med23, label='Edge-Corrected Median', color=cmap[2])
+# 	xlimMin = -.1
+# 	xlimMax = 10.
+# 	xlimPad = .3
 
-	ax4_2.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
-	ax4_2.legend(fontsize=10)
-	ax4_2.set_ylabel('Voltage (mV)')
 
-	ax4_4.plot(tGrid23, data23-rawMed23, label='No Edge Correction',
-		color=cmap[1])
-	ax4_4.plot(tGrid23, data23-med23, label='Edge-Corrected Median',
-		color=cmap[2])
+# 	ax4_1.plot(tGrid23, data23, label='Data')
+# 	ax4_1.plot(tGrid23, rawMed23, label='No Edge Correction', color=cmap[1])
+# 	ax4_1.plot(tGrid23, med23, label='Edge-Corrected Median', color=cmap[2])
 
-	ax4_4.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
-	ax4_4.legend(fontsize=10)
-	ax4_4.set_ylabel('Voltage (mV)')
+# 	ax4_1.set_xlim(xlimMin, xlimPad)
+# 	ax4_1.legend(fontsize=10)
+# 	ax4_1.set_ylabel('Voltage (mV)')
 
-	fig4.suptitle(f"{date}: Rec 23")
+# 	ax4_3.plot(tGrid23, data23-rawMed23, label='No Edge Correction',
+# 		color=cmap[1])
+# 	ax4_3.plot(tGrid23, data23-med23, label='Edge-Corrected Median',
+# 		color=cmap[2])
 
-	fig4.tight_layout()
+# 	ax4_3.set_xlim(xlimMin, xlimPad)
+# 	ax4_3.legend(fontsize=10)
+# 	ax4_3.set_ylabel('Voltage (mV)')
 
-################################################################################
-## Show Threshold, Prominences, WLen Defs
-################################################################################
+# 	ax4_2.plot(tGrid23, data23, label='Data')
+# 	ax4_2.plot(tGrid23, rawMed23, label='No Edge Correction', color=cmap[1])
+# 	ax4_2.plot(tGrid23, med23, label='Edge-Corrected Median', color=cmap[2])
+
+# 	ax4_2.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
+# 	ax4_2.legend(fontsize=10)
+# 	ax4_2.set_ylabel('Voltage (mV)')
+
+# 	ax4_4.plot(tGrid23, data23-rawMed23, label='No Edge Correction',
+# 		color=cmap[1])
+# 	ax4_4.plot(tGrid23, data23-med23, label='Edge-Corrected Median',
+# 		color=cmap[2])
+
+# 	ax4_4.set_xlim(xlimMax-xlimPad, xlimMax-xlimMin)
+# 	ax4_4.legend(fontsize=10)
+# 	ax4_4.set_ylabel('Voltage (mV)')
+
+# 	fig4.suptitle(f"{date}: Rec 23")
+
+# 	fig4.tight_layout()
+
+# ################################################################################
+# ## Show Threshold, Prominences, WLen Defs
+# ################################################################################
 	
-	from scipy.misc import electrocardiogram as ecg
+# 	from scipy.misc import electrocardiogram as ecg
 
-	x = ecg()[17000:18000]
+# 	x = ecg()[17000:18000]
 
-	fig5, [ax5_1, ax5_2, ax5_3] = plt.subplots(3, 1, figsize=(12, 8),
-		sharex=True)
+# 	fig5, [ax5_1, ax5_2, ax5_3] = plt.subplots(3, 1, figsize=(12, 8),
+# 		sharex=True)
 
 
-	ax5_1.plot(x, color=cmap[0])
-	ax5_2.plot(x, color=cmap[0])
-	ax5_3.plot(x, color=cmap[0])
+# 	ax5_1.plot(x, color=cmap[0])
+# 	ax5_2.plot(x, color=cmap[0])
+# 	ax5_3.plot(x, color=cmap[0])
 
-	## RESTRICTIVE PROMINENCE THRESHOLD
-	peaks, props = sig.find_peaks(x, prominence=1.5, width=0, wlen=2*len(x),
-		rel_height=1)
+# 	## RESTRICTIVE PROMINENCE THRESHOLD
+# 	peaks, props = sig.find_peaks(x, prominence=1.5, width=0, wlen=2*len(x),
+# 		rel_height=1)
 
-	ax5_1.plot(peaks, x[peaks], "x", color=cmap[1])
-	ax5_1.vlines(x=peaks, ymin=x[peaks]-props['prominences'], ymax=x[peaks],
-		color=cmap[1])
-	ax5_1.hlines(y=props['width_heights'], xmin=props['left_ips'],
-		xmax=props['right_ips'], color=cmap[1])
+# 	ax5_1.plot(peaks, x[peaks], "x", color=cmap[1])
+# 	ax5_1.vlines(x=peaks, ymin=x[peaks]-props['prominences'], ymax=x[peaks],
+# 		color=cmap[1])
+# 	ax5_1.hlines(y=props['width_heights'], xmin=props['left_ips'],
+# 		xmax=props['right_ips'], color=cmap[1])
 
-	## LOOSE PROM THRESHOLD
-	peaks, props = sig.find_peaks(x, prominence=0.5, width=0, wlen=2*len(x),
-		rel_height=1)
+# 	## LOOSE PROM THRESHOLD
+# 	peaks, props = sig.find_peaks(x, prominence=0.5, width=0, wlen=2*len(x),
+# 		rel_height=1)
 
-	ax5_2.plot(peaks, x[peaks], "x", color=cmap[1])
-	ax5_2.vlines(x=peaks, ymin=x[peaks]-props['prominences'], ymax=x[peaks],
-		color=cmap[1])
-	ax5_2.hlines(y=props['width_heights'], xmin=props['left_ips'],
-		xmax=props['right_ips'], color=cmap[1])
+# 	ax5_2.plot(peaks, x[peaks], "x", color=cmap[1])
+# 	ax5_2.vlines(x=peaks, ymin=x[peaks]-props['prominences'], ymax=x[peaks],
+# 		color=cmap[1])
+# 	ax5_2.hlines(y=props['width_heights'], xmin=props['left_ips'],
+# 		xmax=props['right_ips'], color=cmap[1])
 
-	## RESTRICTIVE WLEN THRESHOLD
-	peaks, props = sig.find_peaks(x, prominence=0.5, width=0, wlen=50,
-		rel_height=1)
+# 	## RESTRICTIVE WLEN THRESHOLD
+# 	peaks, props = sig.find_peaks(x, prominence=0.5, width=0, wlen=50,
+# 		rel_height=1)
 
-	ax5_3.plot(peaks, x[peaks], "x", color=cmap[1])
-	ax5_3.vlines(x=peaks, ymin=x[peaks]-props['prominences'], ymax=x[peaks],
-		color=cmap[1])
-	ax5_3.hlines(y=props['width_heights'], xmin=props['left_ips'],
-		xmax=props['right_ips'], color=cmap[1])
+# 	ax5_3.plot(peaks, x[peaks], "x", color=cmap[1])
+# 	ax5_3.vlines(x=peaks, ymin=x[peaks]-props['prominences'], ymax=x[peaks],
+# 		color=cmap[1])
+# 	ax5_3.hlines(y=props['width_heights'], xmin=props['left_ips'],
+# 		xmax=props['right_ips'], color=cmap[1])
 
-	ax5_3.set_xlabel("Time")
-	ax5_3.set_ylabel("Voltage")
-	ax5_3.set_title(f"Prom = 0.5, wlen = 50")
+# 	ax5_3.set_xlabel("Time")
+# 	ax5_3.set_ylabel("Voltage")
+# 	ax5_3.set_title(f"Prom = 0.5, wlen = 50")
 
-	ax5_2.set_ylabel("Voltage")
-	ax5_2.set_title(f"Prom = 0.5, wlen = {2*len(x)}")
+# 	ax5_2.set_ylabel("Voltage")
+# 	ax5_2.set_title(f"Prom = 0.5, wlen = {2*len(x)}")
 
-	ax5_1.set_ylabel("Voltage")
-	ax5_1.set_title(f"Prom = 1.5, wlen = {2*len(x)}")
+# 	ax5_1.set_ylabel("Voltage")
+# 	ax5_1.set_title(f"Prom = 1.5, wlen = {2*len(x)}")
 
 
-	fig5.tight_layout()
+# 	fig5.tight_layout()
 
 
 
-	fig6, ax6 = plt.subplots(1, 1, figsize=(12, 6))
+# 	fig6, ax6 = plt.subplots(1, 1, figsize=(12, 6))
 
-	ax6.plot(x, color=cmap[0])
+# 	ax6.plot(x, color=cmap[0])
 
-	peaks, props = sig.find_peaks(x)
+# 	peaks, props = sig.find_peaks(x)
 
-	ax6.plot(peaks, x[peaks], "X", color=cmap[1])
+# 	ax6.plot(peaks, x[peaks], "X", color=cmap[1])
 
-	ax6.set_xlabel("Time")
-	ax6.set_ylabel("Voltage")
-	fig6.tight_layout()
+# 	ax6.set_xlabel("Time")
+# 	ax6.set_ylabel("Voltage")
+# 	fig6.tight_layout()
 
 
-	fig7, ax7 = plt.subplots(1, 1, figsize=(12, 6))
+# 	fig7, ax7 = plt.subplots(1, 1, figsize=(12, 6))
 
-	ax7.plot(x, color=cmap[0])
+# 	ax7.plot(x, color=cmap[0])
 
-	peaks, props = sig.find_peaks(x)
+# 	peaks, props = sig.find_peaks(x)
 
-	ax7.plot(peaks, x[peaks], "X", color=cmap[8], alpha=0.5)
-	xlim = ax7.get_xlim()
+# 	ax7.plot(peaks, x[peaks], "X", color=cmap[8], alpha=0.5)
+# 	xlim = ax7.get_xlim()
 
-	prom, wlen1 = 1.5, 2*len(x)
-	peaks1, props1 = sig.find_peaks(x, prominence=0.5, width=0, wlen=wlen1,
-		rel_height=1)
-	wlen2, wlen3 = 100, 50
-	peaks2, props2 = sig.find_peaks(x, prominence=0.5, width=0, wlen=wlen2,
-		rel_height=1)
-	peaks3, props3 = sig.find_peaks(x, prominence=0.5, width=0, wlen=wlen3,
-		rel_height=1)
+# 	prom, wlen1 = 1.5, 2*len(x)
+# 	peaks1, props1 = sig.find_peaks(x, prominence=0.5, width=0, wlen=wlen1,
+# 		rel_height=1)
+# 	wlen2, wlen3 = 100, 50
+# 	peaks2, props2 = sig.find_peaks(x, prominence=0.5, width=0, wlen=wlen2,
+# 		rel_height=1)
+# 	peaks3, props3 = sig.find_peaks(x, prominence=0.5, width=0, wlen=wlen3,
+# 		rel_height=1)
 
-	pLoc = 691
-	pId1 = np.where(peaks1 == pLoc)[0][0]
-	pId2 = np.where(peaks2 == pLoc)[0][0]
-	pId3 = np.where(peaks3 == pLoc)[0][0]
+# 	pLoc = 691
+# 	pId1 = np.where(peaks1 == pLoc)[0][0]
+# 	pId2 = np.where(peaks2 == pLoc)[0][0]
+# 	pId3 = np.where(peaks3 == pLoc)[0][0]
 
-	ax7.vlines(x=pLoc, ymin=x[pLoc]-props1['prominences'][pId1], ymax=x[pLoc],
-		color=cmap[1], label=f"Prom = {props1['prominences'][pId1]:.2f}")
-	ax7.hlines(y=x[pLoc]-props1['prominences'][pId1], xmin=pLoc-wlen1/2,
-		xmax=pLoc+wlen1/2, color=cmap[1])
-	ax7.plot([pLoc-wlen1/2, pLoc, pLoc+wlen1/2],
-		[x[pLoc]-props1['prominences'][pId1], x[pLoc],
-			x[pLoc]-props1['prominences'][pId1]], color=cmap[1],
-			label=f"Min Secant = {props1['prominences'][pId1]/wlen1*2:.2g}")
-
-	ax7.vlines(x=pLoc, ymin=x[pLoc]-props2['prominences'][pId2], ymax=x[pLoc],
-		color=cmap[2], label=f"Prom = {props2['prominences'][pId2]:.2f}")
-	ax7.hlines(y=x[pLoc]-props2['prominences'][pId2], xmin=pLoc-wlen2/2,
-		xmax=pLoc+wlen2/2, color=cmap[2])
-	ax7.plot([pLoc-wlen2/2, pLoc, pLoc+wlen2/2],
-		[x[pLoc]-props2['prominences'][pId2], x[pLoc],
-			x[pLoc]-props2['prominences'][pId2]], color=cmap[2],
-			label=f"Min Secant = {props1['prominences'][pId2]/wlen2*2:.2g}")
-
-	ax7.vlines(x=pLoc, ymin=x[pLoc]-props3['prominences'][pId3], ymax=x[pLoc],
-		color=cmap[3], label=f"Prom = {props3['prominences'][pId3]:.2f}")
-	ax7.hlines(y=x[pLoc]-props3['prominences'][pId3], xmin=pLoc-wlen3/2,
-		xmax=pLoc+wlen3/2, color=cmap[3])
-	ax7.plot([pLoc-wlen3/2, pLoc, pLoc+wlen3/2],
-		[x[pLoc]-props3['prominences'][pId3], x[pLoc],
-			x[pLoc]-props3['prominences'][pId3]], color=cmap[3],
-			label=f"Min Secant = {props1['prominences'][pId3]/wlen3*2:.2g}")
-
-	ax7.set_xlim(xlim)
-
-	ax7.legend(fontsize=10)
-
-	ax7.set_xlabel("Time")
-	ax7.set_ylabel("Voltage")
-	fig7.tight_layout()
-
-################################################################################
-## Show Percentiles
-################################################################################
-
-	fig8, [ax8_1, ax8_2] = plt.subplots(2, 1, figsize=(12, 8))
-
-	sns.distplot(noMed22, ax=ax8_1, kde=False)
-
-	ax8_1.set_yscale('log')
-
-	ylim = ax8_1.get_ylim()
+# 	ax7.vlines(x=pLoc, ymin=x[pLoc]-props1['prominences'][pId1], ymax=x[pLoc],
+# 		color=cmap[1], label=f"Prom = {props1['prominences'][pId1]:.2f}")
+# 	ax7.hlines(y=x[pLoc]-props1['prominences'][pId1], xmin=pLoc-wlen1/2,
+# 		xmax=pLoc+wlen1/2, color=cmap[1])
+# 	ax7.plot([pLoc-wlen1/2, pLoc, pLoc+wlen1/2],
+# 		[x[pLoc]-props1['prominences'][pId1], x[pLoc],
+# 			x[pLoc]-props1['prominences'][pId1]], color=cmap[1],
+# 			label=f"Min Secant = {props1['prominences'][pId1]/wlen1*2:.2g}")
+
+# 	ax7.vlines(x=pLoc, ymin=x[pLoc]-props2['prominences'][pId2], ymax=x[pLoc],
+# 		color=cmap[2], label=f"Prom = {props2['prominences'][pId2]:.2f}")
+# 	ax7.hlines(y=x[pLoc]-props2['prominences'][pId2], xmin=pLoc-wlen2/2,
+# 		xmax=pLoc+wlen2/2, color=cmap[2])
+# 	ax7.plot([pLoc-wlen2/2, pLoc, pLoc+wlen2/2],
+# 		[x[pLoc]-props2['prominences'][pId2], x[pLoc],
+# 			x[pLoc]-props2['prominences'][pId2]], color=cmap[2],
+# 			label=f"Min Secant = {props1['prominences'][pId2]/wlen2*2:.2g}")
+
+# 	ax7.vlines(x=pLoc, ymin=x[pLoc]-props3['prominences'][pId3], ymax=x[pLoc],
+# 		color=cmap[3], label=f"Prom = {props3['prominences'][pId3]:.2f}")
+# 	ax7.hlines(y=x[pLoc]-props3['prominences'][pId3], xmin=pLoc-wlen3/2,
+# 		xmax=pLoc+wlen3/2, color=cmap[3])
+# 	ax7.plot([pLoc-wlen3/2, pLoc, pLoc+wlen3/2],
+# 		[x[pLoc]-props3['prominences'][pId3], x[pLoc],
+# 			x[pLoc]-props3['prominences'][pId3]], color=cmap[3],
+# 			label=f"Min Secant = {props1['prominences'][pId3]/wlen3*2:.2g}")
+
+# 	ax7.set_xlim(xlim)
+
+# 	ax7.legend(fontsize=10)
+
+# 	ax7.set_xlabel("Time")
+# 	ax7.set_ylabel("Voltage")
+# 	fig7.tight_layout()
+
+# ################################################################################
+# ## Show Percentiles
+# ################################################################################
+
+# 	fig8, [ax8_1, ax8_2] = plt.subplots(2, 1, figsize=(12, 8))
+
+# 	sns.distplot(noMed22, ax=ax8_1, kde=False)
+
+# 	ax8_1.set_yscale('log')
+
+# 	ylim = ax8_1.get_ylim()
 
-	t1, t90, t99 = np.percentile(noMed22, [1, 90, 99])
-	ax8_1.vlines(x=t1, ymin=ylim[0], ymax=ylim[1], color=cmap[1],
-		label=f"1st Percentile")
-	ax8_1.vlines(x=t90, ymin=ylim[0], ymax=ylim[1], color=cmap[2],
-		label=f"90th Percentile")
-	ax8_1.vlines(x=t99, ymin=ylim[0], ymax=ylim[1], color=cmap[3],
-		label=f"99th Percentile")
-	ax8_1.hlines(y=100, xmin=t1, xmax=t90, color='k',
-		label=f"Min Prom = {t90-t1:.2g}mV")
-	ax8_1.set_ylim(ylim)
+# 	t1, t90, t99 = np.percentile(noMed22, [1, 90, 99])
+# 	ax8_1.vlines(x=t1, ymin=ylim[0], ymax=ylim[1], color=cmap[1],
+# 		label=f"1st Percentile")
+# 	ax8_1.vlines(x=t90, ymin=ylim[0], ymax=ylim[1], color=cmap[2],
+# 		label=f"90th Percentile")
+# 	ax8_1.vlines(x=t99, ymin=ylim[0], ymax=ylim[1], color=cmap[3],
+# 		label=f"99th Percentile")
+# 	ax8_1.hlines(y=100, xmin=t1, xmax=t90, color='k',
+# 		label=f"Min Prom = {t90-t1:.2g}mV")
+# 	ax8_1.set_ylim(ylim)
 
-	ax8_1.set_xlabel("Voltage (mV)")
-	ax8_1.set_ylabel("No. Measurements")
-	ax8_1.set_title(f"{date}: Recording 22")
-	ax8_1.legend(fontsize=10)
+# 	ax8_1.set_xlabel("Voltage (mV)")
+# 	ax8_1.set_ylabel("No. Measurements")
+# 	ax8_1.set_title(f"{date}: Recording 22")
+# 	ax8_1.legend(fontsize=10)
 
-	sns.distplot(noMed23, ax=ax8_2, kde=False)
+# 	sns.distplot(noMed23, ax=ax8_2, kde=False)
 
-	ax8_2.set_yscale('log')
+# 	ax8_2.set_yscale('log')
 
-	ylim = ax8_1.get_ylim()
-
-	t1, t90, t99 = np.percentile(noMed23, [1, 90, 99])
-	ax8_2.vlines(x=t1, ymin=ylim[0], ymax=ylim[1], color=cmap[1],
-		label=f"1st Percentile")
-	ax8_2.vlines(x=t90, ymin=ylim[0], ymax=ylim[1], color=cmap[2],
-		label=f"90th Percentile")
-	ax8_2.vlines(x=t99, ymin=ylim[0], ymax=ylim[1], color=cmap[3],
-		label=f"99th Percentile")
-	ax8_2.hlines(y=100, xmin=t1, xmax=t90, color='k',
-		label=f"Min Prom = {t90-t1:.2g}mV")
-	ax8_2.set_ylim(ylim)
+# 	ylim = ax8_1.get_ylim()
+
+# 	t1, t90, t99 = np.percentile(noMed23, [1, 90, 99])
+# 	ax8_2.vlines(x=t1, ymin=ylim[0], ymax=ylim[1], color=cmap[1],
+# 		label=f"1st Percentile")
+# 	ax8_2.vlines(x=t90, ymin=ylim[0], ymax=ylim[1], color=cmap[2],
+# 		label=f"90th Percentile")
+# 	ax8_2.vlines(x=t99, ymin=ylim[0], ymax=ylim[1], color=cmap[3],
+# 		label=f"99th Percentile")
+# 	ax8_2.hlines(y=100, xmin=t1, xmax=t90, color='k',
+# 		label=f"Min Prom = {t90-t1:.2g}mV")
+# 	ax8_2.set_ylim(ylim)
 
-	ax8_2.set_xlabel("Voltage (mV)")
-	ax8_2.set_ylabel("No. Measurements")
-	ax8_2.set_title(f"{date}: Recording 23")
-	ax8_2.legend(fontsize=10)
-
-	fig8.tight_layout()
+# 	ax8_2.set_xlabel("Voltage (mV)")
+# 	ax8_2.set_ylabel("No. Measurements")
+# 	ax8_2.set_title(f"{date}: Recording 23")
+# 	ax8_2.legend(fontsize=10)
+
+# 	fig8.tight_layout()
 
-################################################################################
-## Show Peaks Found with Max wLen
-################################################################################
-
-	peakIdx22, _ = sig.find_peaks(noMed22, height=t22, distance=minISI,
-		prominence=prom22, wlen=wLenMax22)
-	peakVals22 = noMed22[peakIdx22]
-
-	peakIdx23, _ = sig.find_peaks(noMed23, height=t23, distance=minISI,
-		prominence=prom23, wlen=wLenMax23)
-	peakVals23 = noMed23[peakIdx23]
-
-	peakIdx24, _ = sig.find_peaks(noMed24, height=t24, distance=minISI,
-		prominence=prom24, wlen=wLenMax24)
-	peakVals24 = noMed24[peakIdx24]
-
-	fig9, [ax9_1, ax9_2] = plt.subplots(2, 1, figsize=(12, 8))
-
-	ax9_1.plot(tGrid22, noMed22)
-	ax9_1.plot(tGrid22[peakIdx22], peakVals22, "X", color=cmap[1])
-	ax9_1.hlines(y=t22, xmin=0, xmax=tGrid22[-1], color='k',
-		label=f"Threshold = {t22:.3g}", zorder=10)
-
-	ax9_1.set_xlabel('Time (s)')
-	ax9_1.set_ylabel("Voltage (mV)")
-	ax9_1.set_title(f"{date}: Recording 22: Med-Sub, wlen={wLenMax22}")
-	ax9_1.legend(fontsize=10)
-
-	ax9_2.plot(tGrid23, noMed23)
-	ax9_2.plot(tGrid23[peakIdx23], peakVals23, "X", color=cmap[1])
-	ax9_2.hlines(y=t23, xmin=0, xmax=tGrid23[-1], color='k',
-		label=f"Threshold = {t23:.3g}", zorder=10)
-
-	ax9_2.set_xlabel('Time (s)')
-	ax9_2.set_ylabel("Voltage (mV)")
-	ax9_2.set_title(f"{date}: Recording 23: Med-Sub, wlen={wLenMax23}")
-	ax9_2.legend(fontsize=10)
-
-	fig9.tight_layout()
-
-################################################################################
-## Show Peaks Found with Max wLen and Iterative Thresholding
-################################################################################
-
-	fig10, [[ax10_1, ax10_1b],
-		[ax10_2, ax10_2b]] = plt.subplots(2, 2, figsize=(12, 8),
-								gridspec_kw={'width_ratios':[2,1]})
-
-	ax10_1.plot(tGrid22, noMed22)
-	ax10_1.plot(tGrid22[peakIdx22], peakVals22, "X", color=cmap[1])
-
-	ax10_2.plot(tGrid24, noMed24)
-	ax10_2.plot(tGrid24[peakIdx24], peakVals24, "X", color=cmap[1])
-
-	bins22 = np.linspace(peakVals22.min(), peakVals22.max(), 10)
-	bins24 = np.linspace(peakVals24.min(), peakVals24.max(), 10)
-
-	nThresh = 5
-
-	cmapHLS = sns.color_palette('hls', nThresh)
-
-	itr, pThresh = 0, 75
-	while itr < nThresh:
-
-		thresh22 = np.percentile(noMed22, pThresh)
-		ax10_1.hlines(y=thresh22, xmin=0, xmax=tGrid22[-1], color=cmapHLS[itr],
-			zorder=10)
-
-		goodVals22 = peakVals22[peakVals22 > thresh22]
-		sns.distplot(goodVals22, ax=ax10_1b, color=cmapHLS[itr], kde=False,
-			norm_hist=False, bins=bins22, label=r"$T_{"+f"{int(pThresh)}"+
-			r"} = $"+f"{thresh22:.2f}mV")
-
-		thresh24 = np.percentile(noMed24, pThresh)
-		ax10_2.hlines(y=thresh24, xmin=0, xmax=tGrid24[-1], color=cmapHLS[itr],
-			zorder=10)
-
-		goodVals24 = peakVals24[peakVals24 > thresh24]
-		sns.distplot(goodVals24, ax=ax10_2b, color=cmapHLS[itr], kde=False,
-			norm_hist=False, bins=bins24, label=r"$T_{"+f"{int(pThresh)}"+
-			r"} = $"+f"{thresh24:.2f}mV")
-
-		pThresh += (100-pThresh)/2.
-		itr += 1
-
-	ax10_1.set_xlabel('Time (s)')
-	ax10_1.set_ylabel("Voltage (mV)")
-	ax10_1.set_title(f"{date}: Recording 22", fontsize=20)
-	ax10_1b.set_title(f"Med-Sub, wlen={wLenMax22}", fontsize=20)
-	ax10_1b.legend(fontsize=10)
-
-	ax10_2.set_xlabel('Time (s)')
-	ax10_2.set_ylabel("Voltage (mV)")
-	ax10_2.set_title(f"{date}: Recording 24", fontsize=20)
-	ax10_2b.set_title(f"Med-Sub, wlen={wLenMax24}", fontsize=20)
-	ax10_2b.legend(fontsize=10)
-
-	fig10.tight_layout()
-
-################################################################################
-## Show N Peaks As Function of Threshold
-################################################################################	
+# ################################################################################
+# ## Show Peaks Found with Max wLen
+# ################################################################################
+
+# 	peakIdx22, _ = sig.find_peaks(noMed22, height=t22, distance=minISI,
+# 		prominence=prom22, wlen=wLenMax22)
+# 	peakVals22 = noMed22[peakIdx22]
+
+# 	peakIdx23, _ = sig.find_peaks(noMed23, height=t23, distance=minISI,
+# 		prominence=prom23, wlen=wLenMax23)
+# 	peakVals23 = noMed23[peakIdx23]
+
+# 	peakIdx24, _ = sig.find_peaks(noMed24, height=t24, distance=minISI,
+# 		prominence=prom24, wlen=wLenMax24)
+# 	peakVals24 = noMed24[peakIdx24]
+
+# 	fig9, [ax9_1, ax9_2] = plt.subplots(2, 1, figsize=(12, 8))
+
+# 	ax9_1.plot(tGrid22, noMed22)
+# 	ax9_1.plot(tGrid22[peakIdx22], peakVals22, "X", color=cmap[1])
+# 	ax9_1.hlines(y=t22, xmin=0, xmax=tGrid22[-1], color='k',
+# 		label=f"Threshold = {t22:.3g}", zorder=10)
+
+# 	ax9_1.set_xlabel('Time (s)')
+# 	ax9_1.set_ylabel("Voltage (mV)")
+# 	ax9_1.set_title(f"{date}: Recording 22: Med-Sub, wlen={wLenMax22}")
+# 	ax9_1.legend(fontsize=10)
+
+# 	ax9_2.plot(tGrid23, noMed23)
+# 	ax9_2.plot(tGrid23[peakIdx23], peakVals23, "X", color=cmap[1])
+# 	ax9_2.hlines(y=t23, xmin=0, xmax=tGrid23[-1], color='k',
+# 		label=f"Threshold = {t23:.3g}", zorder=10)
+
+# 	ax9_2.set_xlabel('Time (s)')
+# 	ax9_2.set_ylabel("Voltage (mV)")
+# 	ax9_2.set_title(f"{date}: Recording 23: Med-Sub, wlen={wLenMax23}")
+# 	ax9_2.legend(fontsize=10)
+
+# 	fig9.tight_layout()
+
+# ################################################################################
+# ## Show Peaks Found with Max wLen and Iterative Thresholding
+# ################################################################################
+
+# 	fig10, [[ax10_1, ax10_1b],
+# 		[ax10_2, ax10_2b]] = plt.subplots(2, 2, figsize=(12, 8),
+# 								gridspec_kw={'width_ratios':[2,1]})
+
+# 	ax10_1.plot(tGrid22, noMed22)
+# 	ax10_1.plot(tGrid22[peakIdx22], peakVals22, "X", color=cmap[1])
+
+# 	ax10_2.plot(tGrid24, noMed24)
+# 	ax10_2.plot(tGrid24[peakIdx24], peakVals24, "X", color=cmap[1])
+
+# 	bins22 = np.linspace(peakVals22.min(), peakVals22.max(), 10)
+# 	bins24 = np.linspace(peakVals24.min(), peakVals24.max(), 10)
+
+# 	nThresh = 5
+
+# 	cmapHLS = sns.color_palette('hls', nThresh)
+
+# 	itr, pThresh = 0, 75
+# 	while itr < nThresh:
+
+# 		thresh22 = np.percentile(noMed22, pThresh)
+# 		ax10_1.hlines(y=thresh22, xmin=0, xmax=tGrid22[-1], color=cmapHLS[itr],
+# 			zorder=10)
+
+# 		goodVals22 = peakVals22[peakVals22 > thresh22]
+# 		sns.distplot(goodVals22, ax=ax10_1b, color=cmapHLS[itr], kde=False,
+# 			norm_hist=False, bins=bins22, label=r"$T_{"+f"{int(pThresh)}"+
+# 			r"} = $"+f"{thresh22:.2f}mV")
+
+# 		thresh24 = np.percentile(noMed24, pThresh)
+# 		ax10_2.hlines(y=thresh24, xmin=0, xmax=tGrid24[-1], color=cmapHLS[itr],
+# 			zorder=10)
+
+# 		goodVals24 = peakVals24[peakVals24 > thresh24]
+# 		sns.distplot(goodVals24, ax=ax10_2b, color=cmapHLS[itr], kde=False,
+# 			norm_hist=False, bins=bins24, label=r"$T_{"+f"{int(pThresh)}"+
+# 			r"} = $"+f"{thresh24:.2f}mV")
+
+# 		pThresh += (100-pThresh)/2.
+# 		itr += 1
+
+# 	ax10_1.set_xlabel('Time (s)')
+# 	ax10_1.set_ylabel("Voltage (mV)")
+# 	ax10_1.set_title(f"{date}: Recording 22", fontsize=20)
+# 	ax10_1b.set_title(f"Med-Sub, wlen={wLenMax22}", fontsize=20)
+# 	ax10_1b.legend(fontsize=10)
+
+# 	ax10_2.set_xlabel('Time (s)')
+# 	ax10_2.set_ylabel("Voltage (mV)")
+# 	ax10_2.set_title(f"{date}: Recording 24", fontsize=20)
+# 	ax10_2b.set_title(f"Med-Sub, wlen={wLenMax24}", fontsize=20)
+# 	ax10_2b.legend(fontsize=10)
+
+# 	fig10.tight_layout()
+
+# ################################################################################
+# ## Show N Peaks As Function of Threshold
+# ################################################################################	
 	
-	plt.close('all')
+# 	plt.close('all')
 
-	pThreshArr = np.arange(50, 100)
-	threshArr = np.percentile(noMed22, pThreshArr)
-	nPeaks22 = np.zeros_like(pThreshArr)
-	peakValsArr22 = []
-	for ii, pThresh in enumerate(pThreshArr):
+# 	pThreshArr = np.arange(50, 100)
+# 	threshArr = np.percentile(noMed22, pThreshArr)
+# 	nPeaks22 = np.zeros_like(pThreshArr)
+# 	peakValsArr22 = []
+# 	for ii, pThresh in enumerate(pThreshArr):
 
-		thresh22 = np.percentile(noMed22, pThresh)
+# 		thresh22 = np.percentile(noMed22, pThresh)
 
-		peakIdx, _ = sig.find_peaks(noMed22, height=thresh22, distance=minISI,
-			prominence=prom22, wlen=wLenMax22)
+# 		peakIdx, _ = sig.find_peaks(noMed22, height=thresh22, distance=minISI,
+# 			prominence=prom22, wlen=wLenMax22)
 
-		nPeaks22[ii] = len(peakIdx)
+# 		nPeaks22[ii] = len(peakIdx)
 
-		peakValsArr22.append(noMed22[peakIdx])
+# 		peakValsArr22.append(noMed22[peakIdx])
 
-	fig11, [ax11_1, ax11_2] = plt.subplots(2, 1, figsize=(12, 8))
+# 	fig11, [ax11_1, ax11_2] = plt.subplots(2, 1, figsize=(12, 8))
 
-	ax11_1.scatter(threshArr, nPeaks22)
+# 	ax11_1.scatter(threshArr, nPeaks22)
 
 
 ################################################################################

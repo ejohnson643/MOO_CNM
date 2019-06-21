@@ -826,17 +826,26 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 		ISIInfo = objDict["ISI"]
 
 		spikeIdx, spikeVals = getSpikeIdx(D, dt=dt, **objDict['Spikes'])
+		if len(spikeIdx) <= 1:
+			if ISIInfo['depol'] == 'thirds':
+				FArr.append([np.inf, np.inf])
+				IQRArr.append([[0, 0], [0, 0]])
+			else:
+				FArr.append(np.inf)
+				IQRArr.append([[0, 0]])
+			continue
 
+		err = []
+		iqr = []
+		
 		if ISIInfo['depol'] in ['thirds', 'lastthird']:
 			bounds = np.linspace(0, len(D), 4).astype(int)
-
-			err = []
-			iqr = []
 
 			first = spikeIdx[spikeIdx < bounds[1]]
 			err.append(getISI(first, dt=dt, **ISIInfo))
 			if len(first) > 5:
-				iqr.append(list(np.percentile(1./(np.diff(first)*dt), [25,75])))
+				iqr.append(list(np.percentile(1./(np.diff(first)*dt),
+					[25,75])))
 			elif len(first) <= 1:
 				iqr.append([0, 0])
 			else:
@@ -847,7 +856,8 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 			last = spikeIdx[spikeIdx >= bounds[2]]
 			err.append(getISI(last, dt=dt, **ISIInfo))
 			if len(first) > 5:
-				iqr.append(list(np.percentile(1./(np.diff(last)*dt), [25, 75])))
+				iqr.append(list(np.percentile(1./(np.diff(last)*dt),
+					[25, 75])))
 			elif len(first) <= 1:
 				iqr.append([0, 0])
 			else:
@@ -887,10 +897,6 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 	FArr = 1./np.array(FArr)
 	IQRArr = np.diff(np.array(IQRArr), axis=2).squeeze()/2.
 	IQRArr[IQRArr == 0] = np.inf
-
-	# print(FArr)
-	# print(IQRArr)
-	# print(np.diff(IQRArr, axis=2).squeeze())
 
 	if FArr.shape[1] == 2:
 		p1, cov1 = np.polyfit(IArr, FArr[:, 0], deg=1, w=1./IQRArr[:, 0],

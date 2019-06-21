@@ -543,10 +543,16 @@ def getDepolStepsFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 
 					err = []
 
-					first = spikeIdx[spikeIdx < bounds[1]]
+					if len(spikeIdx) > 0:
+						first = spikeIdx[spikeIdx < bounds[1]]
+					else:
+						first = deepcopy(spikeIdx)
 					err.append(epo.getISI(first, dt=dt, **subInfo))
 
-					last = spikeIdx[spikeIdx >= bounds[2]]
+					if len(spikeIdx) > 0:
+						last = spikeIdx[spikeIdx >= bounds[2]]
+					else:
+						last = deepcopy(spikeIdx)
 					err.append(epo.getISI(last, dt=dt, **subInfo))
 
 					if subInfo['depol'] == 'lastthird':

@@ -871,6 +871,15 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 			if verbose > 2:
 				print(f"ISI = {err:.4g}ms (FR = {1/err:.4g}Hz)")
 
+			if len(spikeIdx) > 5:
+				iqr.append(list(np.percentile(1./(np.diff(spikeIdx)*dt),
+					[25, 75])))
+			elif len(spikeIdx <= 1):
+				iqr.append([0, 0])
+			else:
+				iqr.append([np.min(1./(np.diff(spikeIdx)*dt)),
+					np.max(1./(np.diff(spikeIdx)*dt))])
+
 		FArr.append(err)
 		IQRArr.append(iqr)
 

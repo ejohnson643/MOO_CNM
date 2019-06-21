@@ -837,6 +837,8 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 			err.append(getISI(first, dt=dt, **ISIInfo))
 			if len(first) > 5:
 				iqr.append(list(np.percentile(1./(np.diff(first)*dt), [25,75])))
+			elif len(first) <= 1:
+				iqr.append([0, 0])
 			else:
 				iqr.append([np.min(1./(np.diff(first)*dt)),
 					np.max(1./(np.diff(first)*dt))])
@@ -846,6 +848,8 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 			err.append(getISI(last, dt=dt, **ISIInfo))
 			if len(first) > 5:
 				iqr.append(list(np.percentile(1./(np.diff(last)*dt), [25, 75])))
+			elif len(first) <= 1:
+				iqr.append([0, 0])
 			else:
 				iqr.append([np.min(1./(np.diff(last)*dt)),
 					np.max(1./(np.diff(last)*dt))])
@@ -874,6 +878,7 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 	FArr = 1./np.array(FArr)
 	IQRArr = np.diff(np.array(IQRArr), axis=2).squeeze()/2.
 	IQRArr[IQRArr == 0] = np.inf
+
 	# print(FArr)
 	# print(IQRArr)
 	# print(np.diff(IQRArr, axis=2).squeeze())
@@ -885,7 +890,6 @@ def getFISlope(data, objDict, IArr, featDict=None, dt=0.001, **kwds):
 			full=False, cov=True)
 
 		P = [p1, p2]
-		print(P)
 		Cov = [cov1, cov2]
 
 		err = [p[0] for p in P]

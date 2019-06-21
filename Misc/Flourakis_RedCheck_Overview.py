@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
 
-		if dateNo != 2:
+		if dateNo != 33:
 			continue
 
 		# dateStr = "01/04/2011"

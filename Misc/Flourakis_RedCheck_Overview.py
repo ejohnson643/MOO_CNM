@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
 
-		if dateNo != 36:
+		if dateNo != 45:
 			continue
 
 		# dateStr = "01/04/2011"
@@ -229,8 +229,8 @@ if __name__ == "__main__":
 
 			print(f"\nKey = {key}\n")
 
-			# if key > 24:
-			# 	continue
+			if key != 10:
+				continue
 
 			## IF I WANT TO GENERATE NEW DATA...
 			## Delete all the entries that exist already
@@ -314,7 +314,7 @@ if __name__ == "__main__":
 		########################################################################
 			elif protocol == EPHYS_PROT_DEPOLSTEP:
 
-				# print(f"{key}: Depolarization Step Protocol")
+				print(f"{key}: Depolarization Step Protocol")
 
 				dataFeat = epu.getDepolFeatures(data, hdr, infoDict, dataFeat,
 					key=key, verbose=3)
@@ -324,7 +324,7 @@ if __name__ == "__main__":
 		########################################################################
 			elif protocol == EPHYS_PROT_HYPERPOLSTEP:
 
-				# print(f"{key}: Hyperpolarization Step Protocol")
+				print(f"{key}: Hyperpolarization Step Protocol")
 
 				dataFeat = epu.getHyperpolFeatures(data, hdr, infoDict,
 					dataFeat, key=key, verbose=2)
@@ -334,7 +334,7 @@ if __name__ == "__main__":
 		########################################################################
 			elif protocol == EPHYS_PROT_DEPOLSTEPS:
 
-				# print(f"{key}: Depolarization Steps Protocol")
+				print(f"{key}: Depolarization Steps Protocol")
 				dataFeat = epu.getDepolStepsFeatures(data, hdr, infoDict,
 					dataFeat, key=key, verbose=2)
 
@@ -343,7 +343,7 @@ if __name__ == "__main__":
 		########################################################################
 			elif protocol == EPHYS_PROT_HYPERPOLSTEPS:
 
-				# print(f"{key}: Hyperpolarization Steps Protocol")
+				print(f"{key}: Hyperpolarization Steps Protocol")
 				dataFeat = epu.getHyperpolStepsFeatures(data, hdr, infoDict,
 					dataFeat, key=key, verbose=2)
 
@@ -355,7 +355,7 @@ if __name__ == "__main__":
 				if len(data) > 30000:
 					continue
 
-				# print(f"{key}: Constant Holding Current Protocol")
+				print(f"{key}: Constant Holding Current Protocol")
 				dataFeat = epu.getConstHoldFeatures(data, hdr, infoDict,
 					dataFeat, key=key, verbose=2)
 
@@ -363,7 +363,7 @@ if __name__ == "__main__":
 		## Hyperpolarization Step Protocol
 		########################################################################
 			else:
-				# print(f"{key}: UNKNOWN PROTOCOL")
+				print(f"{key}: UNKNOWN PROTOCOL")
 				pass
 
 	############################################################################

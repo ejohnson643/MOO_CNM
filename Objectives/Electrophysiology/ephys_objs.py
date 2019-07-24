@@ -398,7 +398,7 @@ def getSpikeIdx(data, dt=0.001, maxRate=100., exact=True, pad=1,
 			print(f"Thresh = {thresh:.4g}\tProm = {minProm:.4g}\twLen = {wLen}")
 
 	############################################################################
-	##	Get InExact Peak Locations, If Requested
+	##	Get Inexact Peak Locations, If Requested
 	############################################################################
 	if not exact:
 		spikeIdx = np.array(peakIdx).astype(float).squeeze()

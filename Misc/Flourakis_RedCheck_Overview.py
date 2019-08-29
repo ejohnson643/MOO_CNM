@@ -1,6 +1,6 @@
 """
 ================================================================================
-	Red Check Data Over view
+	Red Check Data Overview
 ================================================================================
 
 	Author: Eric Johnson
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
 		dateStr = date[-2:] + "/" + date[-5:-3] + "/" + date[:4]
 
-		if dateNo != 45:
+		if dateNo != 1:
 			continue
 
 		# dateStr = "01/04/2011"
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
 			print(f"\nKey = {key}\n")
 
-			if key != 10:
+			if key != 11:
 				continue
 
 			## IF I WANT TO GENERATE NEW DATA...

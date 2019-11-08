@@ -130,7 +130,7 @@ def getExpProtocol(hdr, useList=True):
 	holdCurr = abf.GetHoldingLevel(hdr, hdr['nActiveDACChannel'], 1)
 	if np.sum(hdr['nEpochType'][0] == 1) > 2:
 		## Check the unique epoch current levels
-		epochLevs = hdr['fEpochInitLevel'][0][(hdr['nEpochType'][0]).nonzero()]
+		epochLevs = hdr['fEpochInitLevel'][0][hdr['nEpochType'][0].nonzero()]
 		epochLevs = np.unique(epochLevs)
 		## If there are two unique levels...
 		if len(epochLevs) == 2:
@@ -336,7 +336,7 @@ def getRestFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 			key = utl.force_pos_int(key, name='epu.getRestFeatures.key',
 				zero_ok=True, verbose=verbose)
 		else:
-			key = list(out[obj]['rest'].keys()).sort().pop() + 1
+			key = list(dataFeat[obj]['rest'].keys()).sort().pop() + 1
 
 		dataFeat[obj]['rest'][key] = deepcopy(err)
 
@@ -371,9 +371,13 @@ def getDepolFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 
 		if obj == "ISI":
 			if len(spikeIdx) == 0:
-				continue
+				print("NO SPIKES")
+				if subInfo['depol'] in ['thirds']:
+					err = [np.inf, np.inf]
+				else:
+					err = np.inf
 
-			if subInfo['depol'] in ['thirds', 'lastthird']:
+			elif subInfo['depol'] in ['thirds', 'lastthird']:
 				bounds = np.linspace(0, len(tGrid), 4).astype(int)
 
 				err = []
@@ -400,15 +404,16 @@ def getDepolFeatures(data, hdr, infoDict, dataFeat, key=None, verbose=0):
 
 		elif obj == 'Amp':
 			if len(spikeIdx) == 0:
-				continue
+				err = np.nan
 
-			err = epo.getSpikeAmp(spikeIdx, spikeVals, **subInfo)
+			else:
+				err = epo.getSpikeAmp(spikeIdx, spikeVals, **subInfo)
 
-			if not isinstance(err, float):
-				err = err[1]
+				if not isinstance(err, float):
+					err = err[1]
 
-			if verbose > 2:
-				print(f"Amp = {err:.4g}mV")
+				if verbose > 2:
+					print(f"Amp = {err:.4g}mV")
 
 		elif obj == 'PSD':
 			err = epo.getPSD(dpData, spikeIdx, dt=dt, **subInfo)
@@ -727,7 +732,7 @@ def getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat, key=None,
 			dt=dt, **infoDict['objectives']['RI'])
 
 		if isinstance(err, dict):
-			err = err['linFitP'][0]
+			RIerr = err['linFitP'][0]
 
 		if verbose > 2:
 			print(f"Input Resistance = {err:.4g} GOhms")
@@ -748,9 +753,35 @@ def getHyperpolStepsFeatures(data, hdr, infoDict, dataFeat, key=None,
 		except KeyError:
 			dataFeat['RI'][key] = {}
 
-		print(dataFeat['RI'], key, dataFeat['RI'][key])
+		# print(dataFeat['RI'], key, dataFeat['RI'][key])
 
-		dataFeat['RI'][key] = deepcopy(err)
+		dataFeat['RI'][key] = deepcopy(RIerr)
+
+		if infoDict['objectives']['RI']['estTau']:
+			try:
+				_ = dataFeat['tau']
+			except KeyError:
+				dataFeat['tau'] = {}
+
+			if isinstance(err, dict):
+				tauErr = err['tau']
+			else:
+				tauErr = np.nan
+
+			dataFeat['tau'][key] = deepcopy(tauErr)
+
+		if infoDict['objectives']['RI']['estC']:
+			try:
+				_ = dataFeat['C']
+			except KeyError:
+				dataFeat['C'] = {}
+
+			if isinstance(err, dict):
+				CErr = err['C']
+			else:
+				CErr = np.nan
+
+			dataFeat['C'][key] = deepcopy(CErr)
 
 	return dataFeat
 
@@ -918,9 +949,9 @@ def getDepolIdx(data, hdr, protocol=None, verbose=0):
 
 		else:
 			epochIncs = hdr['fEpochLevelInc'][uDACChan]
-			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
+			epochIncs = epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
-			dpEpchIdx = (epochIdx).nonzero()[0]
+			dpEpchIdx = (epochIncs != 0).nonzero()[0]
 
 			dpI = hdr['fEpochInitLevel'][uDACChan][dpEpchIdx]
 			dpI += hdr['fEpochLevelInc'][uDACChan][dpEpchIdx]
@@ -1060,7 +1091,6 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 			err_str += "PROTOCOL!"
 			raise ValueError(err_str)
 
-
 		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
 
 		epochLevs = hdr['fEpochInitLevel'][uDACChan]
@@ -1075,7 +1105,7 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 			epochIncs = hdr['fEpochLevelInc'][uDACChan]
 			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
-			hpEpchIdx = (epochIdx).nonzero()[0]
+			hpEpchIdx = (epochIncs).nonzero()[0]
 
 			hpI = hdr['fEpochInitLevel'][uDACChan][hpEpchIdx]
 			hpI += hdr['fEpochLevelInc'][uDACChan][hpEpchIdx]
@@ -1093,18 +1123,20 @@ def getHyperpolIdx(data, hdr, protocol=None, verbose=0):
 
 		err_str = f"Input argument 'data' must have 2 dims, got {data.ndim}."
 		assert data.ndim == 2, err_str
+		
+		holdCurr = abf.GetHoldingLevel(hdr, uDACChan, 1)
 
 		epochLevs = hdr['fEpochInitLevel'][uDACChan]
 		epochLevs = epochLevs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
-		if len(np.unique(epochLevs)) == 2:
-			hpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
+		# if len(np.unique(epochLevs)) == 2:
+		# 	hpEpchIdx = (epochLevs != holdCurr).nonzero()[0]
 
-		else:
-			epochIncs = hdr['fEpochLevelInc'][uDACChan]
-			epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
+		# else:
+		epochIncs = hdr['fEpochLevelInc'][uDACChan]
+		epochIncs =epochIncs[(hdr['nEpochType'][uDACChan]).nonzero()]
 
-			hpEpchIdx = (epochIncs).nonzero()[0]
+		hpEpchIdx = (epochIncs).nonzero()[0]
 
 		if len(np.unique(epochIdx, axis=0)) == 1:
 			epochIdx = epochIdx[0]

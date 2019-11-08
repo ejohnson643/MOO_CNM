@@ -397,6 +397,9 @@ def ABF_read(filename,
 			hdr[fieldname] = np.array(hdr[fieldname])
 			# hdr[fieldname] = hdr[fieldname].reshape(1, len(hdr[fieldname]))
 
+	if ABF_version != 'ABF ':
+		return None, hdr
+
 	hdr = promoteHeader(hdr)
 	hdr['sFilename'] = filename
 	hdr['sDirectory'] = datedir
@@ -840,7 +843,6 @@ def define_header(fileVersion):
 def promoteHeader(oldhdr):
 
 	hdr = deepcopy(oldhdr)
-
 	ii = hdr['nActiveDACChannel']
 	hdr['nWaveformSource'][ii] =2 if oldhdr['nWaveformSource'][ii]==2 else 1
 	hdr['nWaveformEnable'][ii]=1 if not oldhdr['nWaveformSource'][ii] else 0

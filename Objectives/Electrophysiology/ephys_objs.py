@@ -304,7 +304,7 @@ def getSpikeIdx(data, dt=0.001, maxRate=100., exact=True, pad=1,
 			if verbose >= 3:
 				print(f"wLen_MinSlope yields a different number of spikes...")
 
-			wLenArr = np.arange(3, wLen_MinSlope+1, 2)
+			wLenArr = np.arange(2, wLen_MinSlope+1, 2)
 			NSpArr = np.zeros_like(wLenArr)
 
 			for ii, wLen in enumerate(wLenArr):
@@ -422,6 +422,7 @@ def getSpikeIdx(data, dt=0.001, maxRate=100., exact=True, pad=1,
 	##	Get Exact Peak Locations, If Requested
 	############################################################################
 	else:
+
 		with warnings.catch_warnings():
 			warnings.filterwarnings("ignore")
 			widths, _, wLeft, wRight = sig.peak_widths(data, peakIdx,
@@ -438,8 +439,10 @@ def getSpikeIdx(data, dt=0.001, maxRate=100., exact=True, pad=1,
 
 			rightSize = ((wr-wl) > 3) and ((wr-wl) <= int(minISI/2.))
 			
-			counter, maxCounter = 0, 10
+			counter, maxCounter = 0, 20
 			while not rightSize:
+
+				# print(itr, wl, wr)
 
 				if verbose >= 4:
 					print(f"{itr}:\tAdjust {wl} - {peakIdx[itr]} - "+
@@ -448,12 +451,16 @@ def getSpikeIdx(data, dt=0.001, maxRate=100., exact=True, pad=1,
 				## If the width is too small, pad it to make it larger
 				if (wr - wl) <= 3:
 					if itr > 0:
-						wl = max(wl-pad, min(wRight[itr-1], wRight[itr]))
+						rightBound = min(wRight[itr-1], wLeft[itr],
+							peakIdx[itr-1]+pad)
+						wl = max(wl-pad, rightBound)##wRight[itr]))
 					else:
 						wl = max(wl-pad, 0)
 
 					if itr < NPeaks-1:
-						wr = min(wr+pad, max(wLeft[itr+1], wLeft[itr]))
+						leftBound = max(wLeft[itr+1], wRight[itr],
+							peakIdx[itr+1]-pad)
+						wr = min(wr+pad, leftBound)##wLeft[itr]))
 					else:
 						wr = min(wr+pad, len(data)-1)
 
@@ -470,9 +477,18 @@ def getSpikeIdx(data, dt=0.001, maxRate=100., exact=True, pad=1,
 				## Increment the counter and only try so hard
 				counter += 1
 				if counter > maxCounter:
-					if verbose >= 3:
+					if verbose >= 0:
 						print("[epo.GetSpikeIdx]: WARNING: Could not find "+
 							f"optimal spike width in {maxCounter} attempts...")
+					## Grid for the data
+					grid = np.arange(wl, wr+.1).astype(int)
+					## Grid on which to evaluate the spline
+					finegrid = np.linspace(wl, wr, 1001)
+
+					print(peakIdx)
+					print(len(grid), counter, maxCounter, grid)
+					print(itr, wl, wr)
+					print(NPeaks, wLen)
 					break
 
 			## Grid for the data
@@ -688,9 +704,9 @@ def getPSD(data, spikeIdx, dt=0.001, window=None, perc=None, covTol=1.,
 				verbose=verbose)
 		else: ## Else, use data to infer window size.
 			if len(spikeIdx) > 1: ## If there are spikes, use avg dist bt APs
-				window = int(1.5*np.mean(np.diff(spikeIdx)))
-			else: ## Else use 100th of data or 100 time points (pick larger)
-				window = max(100, int(len(data)/100.))
+				window = min(500, int(1.5*np.mean(np.diff(spikeIdx))))
+			else: ## Else use 100 time points
+				window = 100 ## max(100, int(len(data)/100.))
 
 		## Force window to be odd.
 		if (window % 2) != 0:

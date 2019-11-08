@@ -5,7 +5,8 @@
 	
 	"objectives":{
 		"Spikes":{
-			"exact":true
+			"exact":true,
+			"maxRate":100
 		},
 		"ISI":{
 			"depol":"thirds"

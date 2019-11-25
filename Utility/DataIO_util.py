@@ -124,7 +124,7 @@ def parseDate(dateStr):
 		raise TypeError(errStr)
 	
 	try:
-		dateref = re.compile("([0-3][1-9])[/.-](0[1-9]|1[0-2])"+
+		dateref = re.compile("([0-3][0-9])[/.-](0[1-9]|1[0-2])"+
 			"[/.-](2009|201[0-6])$", re.IGNORECASE)
 		mat = dateref.match(dateStr)
 		if mat is not None:
@@ -133,7 +133,7 @@ def parseDate(dateStr):
 		pass
 
 	try:
-		dateref = re.compile("([0-3][1-9])(0[1-9]|1[0-2])(2009|201[0-6])$",
+		dateref = re.compile("([0-3][0-9])(0[1-9]|1[0-2])(2009|201[0-6])$",
 			re.IGNORECASE)
 		mat = dateref.match(dateStr)
 		if mat is not None:
@@ -142,7 +142,7 @@ def parseDate(dateStr):
 		pass
 
 	try:
-		dateref = re.compile("(0[1-9]|1[0-2])([0-3][1-9])(2009|201[0-6])$",
+		dateref = re.compile("(0[1-9]|1[0-2])([0-3][0-9])(2009|201[0-6])$",
 			re.IGNORECASE)
 		mat = dateref.match(dateStr)
 		if mat is not None:
@@ -632,94 +632,94 @@ def formatFileName(date, dirType='flourakis', dataNum=None, verbose=0):
 
 
 # def find_date_folder(dateTpl, dataDir="", verbose=0):
-# 	"""find_date_folder(dateTpl, dataDir, verbose=0)
+	"""find_date_folder(dateTpl, dataDir, verbose=0)
 
-# 	Finds folder in dataDir corresponding to dateTpl, which is a datetime tuple
-# 	containing a date.
-# 	"""
+	Finds folder in dataDir corresponding to dateTpl, which is a datetime tuple
+	containing a date.
+	"""
 
-# 	## Checking that verbose is a positive integer
-# 	verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
+	## Checking that verbose is a positive integer
+	verbose = utl.force_pos_int(verbose, name='verbose', zero_ok=True)
 
-# 	## Checking that dateTpl is a datetime object
-# 	if isinstance(dateTpl, str):
-# 		dateTpl = parse_date(dateTpl)
-# 	err_str = "Input argument 'dateTpl' must be a datetime object"
-# 	assert isinstance(dateTpl, datetime.datetime), err_str
+	## Checking that dateTpl is a datetime object
+	if isinstance(dateTpl, str):
+		dateTpl = parse_date(dateTpl)
+	err_str = "Input argument 'dateTpl' must be a datetime object"
+	assert isinstance(dateTpl, datetime.datetime), err_str
 
-# 	dataDir = get_data_dir(dataDir=dataDir, verbose=verbose)
+	dataDir = get_data_dir(dataDir=dataDir, verbose=verbose)
 
-# 	if verbose > 1:
-# 		dateStr = dateTpl.strftime("%A, %B %d, %Y")
-# 		print(f"Locating data from {dateStr}")
+	if verbose > 1:
+		dateStr = dateTpl.strftime("%A, %B %d, %Y")
+		print(f"Locating data from {dateStr}")
 
-# 	## Format folder name, which is of course MMDDYYYY
-# 	folderName = dateTpl.strftime("%m%d%Y")
+	## Format folder name, which is of course MMDDYYYY
+	folderName = dateTpl.strftime("%m%d%Y")
 
-# 	## Look recursively...  First check if it is in dataDir
-# 	if folderName in os.listdir(dataDir):
-# 		dataDir = os.path.join(dataDir, folderName)
-# 		if verbose > 1:
-# 			print(f"Date folder: {dataDir}")
-# 		return dataDir
+	## Look recursively...  First check if it is in dataDir
+	if folderName in os.listdir(dataDir):
+		dataDir = os.path.join(dataDir, folderName)
+		if verbose > 1:
+			print(f"Date folder: {dataDir}")
+		return dataDir
 
-# 	## Then lets look for month folders...
-# 	monthfmt = dateTpl.strftime("%b %y|%B %y|%b %Y|%B %Y")
-# 	monthref = re.compile(monthfmt, re.IGNORECASE)
+	## Then lets look for month folders...
+	monthfmt = dateTpl.strftime("%b %y|%B %y|%b %Y|%B %Y")
+	monthref = re.compile(monthfmt, re.IGNORECASE)
 
-# 	for folder in os.listdir(dataDir):
-# 		if monthref.match(folder):
-# 			monthDir = os.path.join(dataDir, folder)
-# 			if os.path.isdir(monthDir):
-# 				if folderName in os.listdir(monthDir):
-# 					dataDir = os.path.join(monthDir, folderName)
-# 					if verbose > 1:
-# 						print(f"Date folder: {dataDir}")
-# 					return dataDir
+	for folder in os.listdir(dataDir):
+		if monthref.match(folder):
+			monthDir = os.path.join(dataDir, folder)
+			if os.path.isdir(monthDir):
+				if folderName in os.listdir(monthDir):
+					dataDir = os.path.join(monthDir, folderName)
+					if verbose > 1:
+						print(f"Date folder: {dataDir}")
+					return dataDir
 
-# 	## Try looking through years...
-# 	year = str(dateTpl.year)
+	## Try looking through years...
+	year = str(dateTpl.year)
 
-# 	if year in os.listdir(dataDir):
-# 		yearDir = os.path.join(dataDir, year)
-# 		if os.path.isdir(yearDir):
-# 			dataDir = deepcopy(yearDir)
+	if year in os.listdir(dataDir):
+		yearDir = os.path.join(dataDir, year)
+		if os.path.isdir(yearDir):
+			dataDir = deepcopy(yearDir)
 
-# 	## Then check again that it is not in yearDir
-# 	if folderName in os.listdir(dataDir):
-# 		dataDir = os.path.join(dataDir, folderName)
-# 		if verbose > 1:
-# 			print(f"Date folder: {dataDir}")
-# 		return dataDir
+	## Then check again that it is not in yearDir
+	if folderName in os.listdir(dataDir):
+		dataDir = os.path.join(dataDir, folderName)
+		if verbose > 1:
+			print(f"Date folder: {dataDir}")
+		return dataDir
 
-# 	## Then lets look for month folders...
-# 	for folder in os.listdir(dataDir):
-# 		if monthref.match(folder):
-# 			monthDir = os.path.join(dataDir, folder)
-# 			if os.path.isdir(monthDir):
-# 				if folderName in os.listdir(monthDir):
-# 					dataDir = os.path.join(monthDir, folderName)
-# 					if verbose > 1:
-# 						print(f"Date folder: {dataDir}")
-# 					return dataDir
+	## Then lets look for month folders...
+	for folder in os.listdir(dataDir):
+		if monthref.match(folder):
+			monthDir = os.path.join(dataDir, folder)
+			if os.path.isdir(monthDir):
+				if folderName in os.listdir(monthDir):
+					dataDir = os.path.join(monthDir, folderName)
+					if verbose > 1:
+						print(f"Date folder: {dataDir}")
+					return dataDir
 
-# 	## Finally we can try this format...
-# 	dataDir = dataDir[:-5]
-# 	folderfmt = dateTpl.strftime("%Y[/.-_ ]*%m[/.-_ ]*%d"+
-# 		"|%m[/.-_ ]*%d[/.-_ ]*%Y")
-# 	folderref = re.compile(folderfmt, re.IGNORECASE)
+	## Finally we can try this format...
+	dataDir = dataDir[:-5]
+	folderfmt = dateTpl.strftime("%Y[/.-_ ]*%m[/.-_ ]*%d"+
+		"|%m[/.-_ ]*%d[/.-_ ]*%Y")
+	folderref = re.compile(folderfmt, re.IGNORECASE)
 
-# 	for folder in os.listdir(dataDir):
-# 		if os.path.isdir(os.path.join(dataDir,folder)):
-# 			if folderref.match(folder):
-# 				dataDir = os.path.join(dataDir, folder)
-# 				if verbose > 1:
-# 					print(f"Date folder: {dataDir}")
-# 				return dataDir
+	for folder in os.listdir(dataDir):
+		if os.path.isdir(os.path.join(dataDir,folder)):
+			if folderref.match(folder):
+				dataDir = os.path.join(dataDir, folder)
+				if verbose > 1:
+					print(f"Date folder: {dataDir}")
+				return dataDir
 
-# 	dateStr = dateTpl.strftime("%A, %B %d, %Y")
-# 	err_str = f"Could not locate data from {dateStr}..."
-# 	raise ValueError(err_str)
+	dateStr = dateTpl.strftime("%A, %B %d, %Y")
+	err_str = f"Could not locate data from {dateStr}..."
+	raise ValueError(err_str)
 
 
 

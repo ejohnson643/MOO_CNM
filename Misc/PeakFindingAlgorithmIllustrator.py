@@ -115,6 +115,15 @@ def isWT(entry):
 	else:
 		return False
 
+################################################################################
+## Text Processing Functions for Loading CSV
+################################################################################
+def saveFigure(fig, figName,figDir="./Figures/PeakFindingAlgorithmIllustrator/",
+	formats=['pdf', 'png']):
+
+	for form in formats:
+		fig.savefig(os.path.join(figDir, figName+f'.{form}'), format=form,
+			dpi=400)
 
 ################################################################################
 ## Runtime Commands
@@ -136,16 +145,16 @@ if __name__ == "__main__":
 	gen_new_data = True
 
 	## Plotting flags
-	plot_fig1_rawData = False
-	plot_fig2_medSubtract = False
-	plot_fig3_medEdgeCorrect = False
-	plot_fig4_medWindowSens = False
-	plot_fig5_paramDefns = False
-	plot_fig6_voltageHists = False
+	plot_fig1_rawData = True
+	plot_fig2_medSubtract = True
+	plot_fig3_medEdgeCorrect = True
+	plot_fig4_medWindowSens = True
+	plot_fig5_paramDefns = True
+	plot_fig6_voltageHists = True
 	plot_fig7_NPeaks_vs_thresh_prom = False
 	plot_fig8_NPeaks_vs_wlen = False
 	plot_fig9_NPeak_vs_ALL = False
-	plot_fig10_FindStablePeaks_with_Prom_wlen = True
+	plot_fig10_FindStablePeaks_with_Prom_wlen = False
 
 	infoDir = "./Runfiles/PeakFindingAlgorithmIllustrator/"
 
@@ -296,7 +305,8 @@ if __name__ == "__main__":
 
 		fig1aName = "Recording22.pdf"
 		fig1aPath = os.path.join(figDir, fig1aName)
-		fig1a.savefig(fig1aPath, format='pdf', dpi=600)
+		# fig1a.savefig(fig1aPath, format='pdf', dpi=600)
+		saveFigure(fig1a, fig1aName[:-4])
 
 
 		## Recording 23
@@ -318,7 +328,8 @@ if __name__ == "__main__":
 
 		fig1bName = "Recording23.pdf"
 		fig1bPath = os.path.join(figDir, fig1bName)
-		fig1b.savefig(fig1bPath, format='pdf', dpi=600)
+		# fig1b.savefig(fig1bPath, format='pdf', dpi=600)
+		saveFigure(fig1b, fig1bName[:-4])
 
 
 		## Recording 24
@@ -341,7 +352,8 @@ if __name__ == "__main__":
 
 		fig1cName = "Recording24.pdf"
 		fig1cPath = os.path.join(figDir, fig1cName)
-		fig1c.savefig(fig1cPath, format='pdf', dpi=600)
+		# fig1c.savefig(fig1cPath, format='pdf', dpi=600)
+		saveFigure(fig1c, fig1cName[:-4])
 
 ################################################################################
 ## Plot Median Subtraction
@@ -392,8 +404,10 @@ if __name__ == "__main__":
 		fig2a.tight_layout()
 
 		fig2aName = "NoMedianRecording22.pdf"
-		fig2aPath = os.path.join(figDir, fig2aName)
-		fig2a.savefig(fig2aPath, format='pdf', dpi=600)
+		# fig2aPath = os.path.join(figDir, fig2aName)
+		# fig2a.savefig(fig2aPath, format='pdf', dpi=600)
+
+		saveFigure(fig2a, fig2aName[:-4])
 
 
 		## Recording 23
@@ -415,8 +429,9 @@ if __name__ == "__main__":
 		fig2b.tight_layout()
 
 		fig2bName = "NoMedianRecording23.pdf"
-		fig2bPath = os.path.join(figDir, fig2bName)
-		fig2b.savefig(fig2bPath, format='pdf', dpi=600)
+		# fig2bPath = os.path.join(figDir, fig2bName)
+		# fig2b.savefig(fig2bPath, format='pdf', dpi=600)
+		saveFigure(fig2b, fig2bName[:-4])
 
 
 		## Recording 24
@@ -438,8 +453,9 @@ if __name__ == "__main__":
 		fig2c.tight_layout()
 
 		fig2cName = "NoMedianRecording24.pdf"
-		fig2cPath = os.path.join(figDir, fig2cName)
-		fig2c.savefig(fig2cPath, format='pdf', dpi=600)
+		# fig2cPath = os.path.join(figDir, fig2cName)
+		# fig2c.savefig(fig2cPath, format='pdf', dpi=600)
+		saveFigure(fig2c, fig2cName[:-4])
 
 ################################################################################
 ## Show Median Filter Edge Correction
@@ -521,8 +537,10 @@ if __name__ == "__main__":
 		fig3.tight_layout()
 
 		fig3Name = "EdgeCorrectionIllustration_NoMed.pdf"
-		fig3Path = os.path.join(figDir, fig3Name)
-		fig3.savefig(fig3Path, format='pdf', dpi=600)
+		# fig3Path = os.path.join(figDir, fig3Name)
+		# fig3.savefig(fig3Path, format='pdf', dpi=600)
+
+		saveFigure(fig3, fig3Name[:-4])
 
 ################################################################################
 ## Show Median Filter Window Size Sensitivity
@@ -579,8 +597,10 @@ if __name__ == "__main__":
 		fig4.tight_layout()
 
 		fig4Name = "MedianFilter_vs_WindowSize_NoMed.pdf"
-		fig4Path = os.path.join(figDir, fig4Name)
-		fig4.savefig(fig4Path, format='pdf', dpi=600)
+		# fig4Path = os.path.join(figDir, fig4Name)
+		# fig4.savefig(fig4Path, format='pdf', dpi=600)
+
+		saveFigure(fig4, fig4Name[:-4])
 
 ################################################################################
 ## Show Parameter Definitions
@@ -672,8 +692,9 @@ if __name__ == "__main__":
 		fig5.tight_layout()
 
 		fig5Name = "PeakFind_ParamIllustration.pdf"
-		fig5Path = os.path.join(figDir, fig5Name)
-		fig5.savefig(fig5Path, format='pdf', dpi=600)
+		# fig5Path = os.path.join(figDir, fig5Name)
+		# fig5.savefig(fig5Path, format='pdf', dpi=600)
+		saveFigure(fig5, fig5Name[:-4])
 	
 ################################################################################
 ## Show Common Thresholds on Histograms
@@ -729,8 +750,9 @@ if __name__ == "__main__":
 		fig6.tight_layout()
 
 		fig6Name = "HistogramThresholdExamples.pdf"
-		fig6Path = os.path.join(figDir, fig6Name)
-		fig6.savefig(fig6Path, format='pdf', dpi=600)
+		# fig6Path = os.path.join(figDir, fig6Name)
+		# fig6.savefig(fig6Path, format='pdf', dpi=600)
+		saveFigure(fig6, fig6Name[:-4])
 	
 ################################################################################
 ## Show Dependence of Num Peaks on Thresh, Prom, (wlen max!)
@@ -801,8 +823,9 @@ if __name__ == "__main__":
 		fig7.tight_layout()
 
 		fig7Name = "NPeaks_vs_Thresh_Prom_at_WLenMax.pdf"
-		fig7Path = os.path.join(figDir, fig7Name)
-		fig7.savefig(fig7Path, format='pdf', dpi=600)
+		# fig7Path = os.path.join(figDir, fig7Name)
+		# fig7.savefig(fig7Path, format='pdf', dpi=600)
+		saveFigure(fig7, fig7Name[:-4])
 	
 ################################################################################
 ## Show Dependence of Num Peaks on wlen (given Thresh, Prom)
@@ -905,8 +928,9 @@ if __name__ == "__main__":
 		fig8.tight_layout()
 
 		fig8Name = "NPeaks_vs_wlen.pdf"
-		fig8Path = os.path.join(figDir, fig8Name)
-		fig8.savefig(fig8Path, format='pdf', dpi=600)
+		# fig8Path = os.path.join(figDir, fig8Name)
+		# fig8.savefig(fig8Path, format='pdf', dpi=600)
+		saveFigure(fig8, fig8Name[:-4])
 
 ################################################################################
 ## Show Dependence of Num Peaks on wlen, Thresh, Prom
@@ -1037,14 +1061,16 @@ if __name__ == "__main__":
 		fig9.tight_layout()
 
 		fig9Name = "NPeaks_vs_ALL.pdf"
-		fig9Path = os.path.join(figDir, fig9Name)
-		fig9.savefig(fig9Path, format='pdf', dpi=600)
+		# fig9Path = os.path.join(figDir, fig9Name)
+		# fig9.savefig(fig9Path, format='pdf', dpi=600)
+		saveFigure(fig9, fig9Name[:-4])
 
 		fig10.tight_layout()
 
 		fig10Name = "NPeaks_vs_ALL_RATIO.pdf"
-		fig10Path = os.path.join(figDir, fig10Name)
-		fig10.savefig(fig10Path, format='pdf', dpi=600)
+		# fig10Path = os.path.join(figDir, fig10Name)
+		# fig10.savefig(fig10Path, format='pdf', dpi=600)
+		saveFigure(fig10, fig10Name[:-4])
 
 ################################################################################
 ## Show How We Can Walk Up Prom + wlen to Find Stable Params
@@ -1143,8 +1169,9 @@ if __name__ == "__main__":
 		fig10.tight_layout()
 
 		fig10Name = "NPeaks_vs_WLEN_and_PROM.pdf"
-		fig10Path = os.path.join(figDir, fig10Name)
-		fig10.savefig(fig10Path, format='pdf')
+		# fig10Path = os.path.join(figDir, fig10Name)
+		# fig10.savefig(fig10Path, format='pdf')
+		saveFigure(fig10, fig10Name[:-4])
 
 
 

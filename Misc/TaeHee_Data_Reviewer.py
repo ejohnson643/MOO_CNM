@@ -49,24 +49,12 @@ if __name__ == "__main__":
 	dataDir = "./Data/TaeHeeData/"
 	figDir = "./Figures/TaeHeeOverview/"
 
-	# fileName = "04/05/2012"
-	fileName = "12/06/2012"
-	dataNum = 8
+	makeNewFigs = False
 
-	data = DIO.loadABF(fileName, dirName=dataDir, dirType='Han',
-		dataNum=dataNum)
+	fileName = "04/05/2012"
+	# fileName = "12/06/2012"
+	dataNum = 9
 
-	dataFolder = DIO.formatDateFolder(DIO.parseDate(fileName), dirName=dataDir,
-		dirType='han')
-
-	# for f in sorted(os.listdir(dataFolder)):
-	# 	if f[-4:] != '.abf':
-	# 		continue
-
-	# 	data = DIO.loadABF(f, dirName=dataFolder, dirType='Han')
-
-	# 	print(f)
-	# 	print(data)
 	window = 101
 	dt = 0.001
 	maxRate = 100
@@ -76,51 +64,91 @@ if __name__ == "__main__":
 	minWidth = 3
 	pPromAdj = 0.1
 
-	verbose = 4
+	verbose = 1
 
-	fig, [ax1, ax2] = plt.subplots(2, 1, figsize=(16, 8), sharex=True)
+	# data = DIO.loadABF(fileName, dirName=dataDir, dirType='Han',
+	# 	dataNum=dataNum)
 
-	cmap = sns.color_palette('hls', data.sweepCount)
+	# dataFolder = DIO.formatDateFolder(DIO.parseDate(fileName), dirName=dataDir,
+	# 	dirType='han')
 
-	for ii in range(data.sweepCount):
-		data.setSweep(ii)
+	for yearDir in os.listdir(dataDir):
+		for dayDir in os.listdir(os.path.join(dataDir, yearDir)):
+			dirPath = os.path.join(dataDir, yearDir, dayDir)
+			for fileName in sorted(os.listdir(dirPath)):
+				filePath = os.path.join(dirPath, fileName)
 
-		dt = np.mean(np.diff(data.sweepX))
+				figName = f"RecordingPlot_{''.join(fileName[:-4].split('/'))}.pdf"
+				print("Looking at", fileName)
 
-		spikeIdx, spikeVals = epo.getSpikeIdx(data, dt=dt, maxRate=maxRate,
-			minSlope=minSlope, minWidth=minWidth, pad=pad, window=window,
-			verbose=verbose)
+				if not makeNewFigs:
+					if figName in os.listdir(dirPath):
+						print("Already made figure ", figName)
+						continue
+				if filePath[-4:] != '.abf':
+					print("Not an ABF", filePath)
+					continue
 
-		ISI = epo.getISI(spikeIdx, dt=dt)
+				try:
+					data = DIO.quickloadABF(filePath)
 
-		FR = epo.getFR(ISI)
 
-		# AmpP, AmpCov = epo.getSpikeAmp(spikeIdx, spikeVals, dt=dt,
-		# 	returnAll=True, verbose=verbose)
+					fig, [ax1, ax2] = plt.subplots(2, 1, figsize=(16, 8),
+						sharex=True)
 
-		print(f"\nThe Firing Rate is {FR:.2f}Hz (ISI = {ISI:.2f}s)\n")
+					cmap = sns.color_palette('hls', data.sweepCount)
 
-		ax1.plot(data.sweepX, data.sweepY, color=cmap[ii],
-			label = f"FR = {FR:.2f}Hz")
+					for ii in range(data.sweepCount):
+						data.setSweep(ii)
 
-		ax1.scatter(spikeIdx*dt, spikeVals, color=cmap[ii])
+						dt = np.mean(np.diff(data.sweepX))
 
-		ax2.plot(data.sweepX, data.sweepC, color=cmap[ii],
-			label = r"$I_{APP} = $" + f"{data.sweepEpochs.levels[2]:.1f} pA")
+						spikeIdx, spikeVals = epo.getSpikeIdx(data, dt=dt,
+							maxRate=maxRate, minSlope=minSlope, minWidth=minWidth,
+							pad=pad, window=window, verbose=verbose)
 
-	ax1.set_ylabel(data.sweepLabelY, fontsize=18)
-	ax1.set_title("Patch Clamp Recording", fontsize=24)
-	ax1.legend(fontsize=10)
+						ISI = epo.getISI(spikeIdx, dt=dt)
 
-	ax2.set_xlabel(data.sweepLabelC, fontsize=18)
-	ax2.set_ylabel(data.sweepLabelY, fontsize=18)
-	ax2.set_title("Applied Current", fontsize=24)
-	ax2.legend(fontsize=10)
+						FR = epo.getFR(ISI)
 
-	fig.tight_layout()
+						# AmpP, AmpCov = epo.getSpikeAmp(spikeIdx, spikeVals, dt=dt,
+						# 	returnAll=True, verbose=verbose)
 
-	figName = f"RecordingPlot_{''.join(fileName.split('/'))}_{dataNum}.pdf"
-	fig.savefig(os.path.join(figDir, figName), format='pdf')
+						print(f"\nThe Firing Rate is {FR:.2f}Hz (ISI = {ISI:.2f}s)\n")
+
+						ax1.plot(data.sweepX, data.sweepY, color=cmap[ii],
+							label = f"FR = {FR:.2f}Hz")
+
+						ax1.scatter(spikeIdx*dt, spikeVals, color=cmap[ii])
+
+						try:
+							ax2.plot(data.sweepX, data.sweepC, color=cmap[ii],
+								label = r"$I_{APP} = $" + f"{data.sweepEpochs.levels[2]:.1f} pA")
+						except IndexError:
+							ax2.plot(data.sweepX, data.sweepC, color=cmap[ii])
+
+					ax1.set_ylabel(data.sweepLabelY, fontsize=18)
+					ax1.set_title("Patch Clamp Recording", fontsize=24)
+					ax1.legend(fontsize=10)
+
+					ax2.set_xlabel(data.sweepLabelC, fontsize=18)
+					ax2.set_ylabel(data.sweepLabelY, fontsize=18)
+					ax2.set_title("Applied Current", fontsize=24)
+					ax2.legend(fontsize=10)
+
+					fig.tight_layout()
+
+					figName = f"RecordingPlot_{''.join(fileName[:-4].split('/'))}.pdf"
+					print("Trying to save", figName)
+					fig.savefig(os.path.join(dirPath, figName), format='pdf')
+					plt.close('all')
+				except:
+					plt.close('all')
+					print("\n\n\n\n" + 40*"*" + "\n\n" + "COULD NOT MAKE FIGURE")
+					print(filePath)
+					print("\n" + 40*"*" + "\n\n\n\n")
+					# print("\n")
+					pass
 
 
 	plt.show()

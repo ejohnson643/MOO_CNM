@@ -65,7 +65,7 @@ def getSpikeIdx(data, dt=0.001, maxRate=100, minSlope=20., thresh=None,
 	############################################################################
 	if True:
 		
-		verbose = forceFloat(verbose, 'verbose')
+		verbose = forceFloat(verbose, 'verbose', verbose=-1)
 
 		if isinstance(data, abf.ABF):
 			if verbose >= 1:
@@ -84,15 +84,15 @@ def getSpikeIdx(data, dt=0.001, maxRate=100, minSlope=20., thresh=None,
 
 		X = X.astype(float)
 
-		dt = forcePosFloat(dt, 'dt', zeroOK=False, verbose=verbose)
+		dt = forcePosFloat(dt, 'dt', zeroOK=False, verbose=verbose-2)
 
 		maxRate = forcePosFloat(maxRate, 'maxRate', zeroOK=False,
-			verbose=verbose)
+			verbose=verbose-2)
 
 		minISI = int(1./dt/maxRate)
 
 		minSlope = forcePosFloat(minSlope, 'minSlope', zeroOK=False,
-			verbose=verbose)
+			verbose=verbose-2)
 
 		if thresh is not None:
 			if isinstance(thresh, np.ndarray):
@@ -106,19 +106,19 @@ def getSpikeIdx(data, dt=0.001, maxRate=100, minSlope=20., thresh=None,
 
 		if minProm is not None:
 			minProm = forcePosFloat(minProm, 'minProm', zeroOK=True,
-				verbose=verbose)
+				verbose=verbose-2)
 
 		pPromAdj = forcePosFloat(pPromAdj, 'pPromAdj', zeroOK=True,
-			verbose=verbose)
+			verbose=verbose-2)
 
-		window = forcePosInt(window, 'window', zeroOK=False, verbose=verbose)
+		window = forcePosInt(window, 'window', zeroOK=False, verbose=verbose-2)
 		## window must be an odd number
 		window = window + 1 if ((window % 2) == 0) else window
 
-		pad = forcePosInt(pad, 'pad', zeroOK=False, verbose=verbose)
+		pad = forcePosInt(pad, 'pad', zeroOK=False, verbose=verbose-2)
 
 		minWidth = forcePosInt(minWidth, 'minWidth', zeroOK=False,
-			verbose=verbose)
+			verbose=verbose-2)
 		if minWidth < 3:
 			minWidth = 3
 
@@ -431,7 +431,7 @@ def getSpikeIdx(data, dt=0.001, maxRate=100, minSlope=20., thresh=None,
 ################################################################################
 ##	Get Inter-Spike Interval
 ################################################################################
-def getISI(spikeIdx, dt=0.001, minRate=0., NSpikes=2):
+def getISI(spikeIdx, dt=0.001, minRate=0., NSpikes=2, verbose=0):
 
 	errHdr = "[getISI]: "
 
@@ -451,13 +451,15 @@ def getISI(spikeIdx, dt=0.001, minRate=0., NSpikes=2):
 			raise ValueError(errStr)
 
 		## Conversion between units of spikeIdx and seconds
-		dt = forcePosFloat(dt, 'dt', zeroOK=False)
+		dt = forcePosFloat(dt, 'dt', zeroOK=False, verbose=verbose-2)
 
 		## Minimum detectable rate
-		minRate = forcePosFloat(minRate, 'minRate', zeroOK=True)
+		minRate = forcePosFloat(minRate, 'minRate', zeroOK=True,
+			verbose=verbose-2)
 
 		## Minimum number of spikes to use in calculation
-		NSpikes = forcePosInt(NSpikes, 'NSpikes', zeroOK=False)
+		NSpikes = forcePosInt(NSpikes, 'NSpikes', zeroOK=False,
+			verbose=verbose-2)
 
 	############################################################################
 	##	Calculate mean ISI
